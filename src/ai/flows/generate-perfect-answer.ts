@@ -110,7 +110,7 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     // 1. Check history using the tool
     if (input.questionData) {
         const historyCheck = await ai.run({
-            prompt: `Check if there is a past answer for the question: "${input.questionData}"`,
+            prompt: `Based on the user's request, decide if you should use the answer history tool to check for a previous answer to the question: "${input.questionData}". If a similar question was asked before, use the tool. Otherwise, do not use the tool.`,
             tools: [answerHistoryTool],
             model: 'googleai/gemini-1.5-flash',
             input: {
@@ -119,11 +119,14 @@ const generatePerfectAnswerFlow = ai.defineFlow(
             }
         });
 
-        // The tool's output is in the last history message if it was called.
-        const toolOutput = historyCheck.history[historyCheck.history.length-1]?.toolRequest?.output;
+        // The tool's output is in the last history message if the LLM decided to call it.
+        const lastMessage = historyCheck.history[historyCheck.history.length-1];
+        if(lastMessage?.toolRequest) {
+            const toolOutput = lastMessage.toolRequest.output;
 
-        if (toolOutput?.found && toolOutput.answer) {
-            return { answer: `(From History) ${toolOutput.answer}` };
+            if (toolOutput?.found && toolOutput.answer) {
+                return { answer: `(From History) ${toolOutput.answer}` };
+            }
         }
     }
 
@@ -134,7 +137,10 @@ const generatePerfectAnswerFlow = ai.defineFlow(
         userProfile: input.userProfile
     });
 
-    const newAnswer = output!.answer;
+    if (!output) {
+      throw new Error("AI failed to generate an answer.");
+    }
+    const newAnswer = output.answer;
     
     // 3. Save the new answer to our "database"
     if (input.questionData) {
