@@ -10,7 +10,7 @@ import type { ProfileData } from "@/lib/data";
 import { generateAnswerFromScreenshot } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { GoogleHome } from "@/components/google-home";
+import { DuckDuckGoHome } from "@/components/duckduckgo-home";
 
 const USER_ID_KEY = "global_insights_user_id";
 
@@ -166,6 +166,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
         }
     } catch(e) {
         // Cross-origin error, can't access location, which is fine.
+        setLoadError(null);
     }
   };
 
@@ -234,7 +235,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
         )}
 
         {!currentUrl && !isIframeLoading && !loadError && (
-            <GoogleHome onSearch={navigateTo} lang={lang} />
+            <DuckDuckGoHome onSearch={navigateTo} lang={lang} />
         )}
 
         {loadError && !isIframeLoading && (
@@ -249,6 +250,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
         {currentUrl && (
             <iframe
+                key={currentUrl}
                 ref={iframeRef}
                 src={currentUrl}
                 className={cn("w-full h-full border-0", (isIframeLoading || !!loadError) && "opacity-0")}
