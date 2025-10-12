@@ -9,6 +9,7 @@ interface ActionResult {
 }
 
 export async function generateAnswerAction(
+  userId: string,
   questionData: string,
   imageFile: string | null,
   userProfile: ProfileData | null
@@ -18,6 +19,9 @@ export async function generateAnswerAction(
   }
   if (!userProfile) {
     return { error: "Please complete your profile first." };
+  }
+  if (!userId) {
+    return { error: "User session not found. Please refresh the page."}
   }
 
   try {
@@ -35,6 +39,7 @@ export async function generateAnswerAction(
     `;
 
     const input = {
+      userId,
       ...(questionData && { questionData }),
       ...(imageFile && { imageFile }),
       userProfile: profileString,

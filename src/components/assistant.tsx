@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Upload, Lightbulb, Loader2, AlertCircle } from "lucide-react";
 import { generateAnswerAction } from "@/app/actions";
 import type { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
+
+const USER_ID_KEY = "global_insights_user_id";
 
 interface AssistantProps {
   profile: ProfileData | null;
@@ -22,8 +24,16 @@ export function Assistant({ profile, lang }: AssistantProps) {
   const [answer, setAnswer] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = translations[lang];
+
+  useEffect(() => {
+    const storedUserId = localStorage.getItem(USER_ID_KEY);
+    if (storedUserId) {
+      setUserId(storedUserId);
+    }
+  }, []);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -56,12 +66,17 @@ export function Assistant({ profile, lang }: AssistantProps) {
       setError(t.assistant.inputError);
       return;
     }
+    if (!userId) {
+      setError("User session not found. Please refresh the page.");
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
     setAnswer(null);
 
     const result = await generateAnswerAction(
+      userId,
       question,
       image?.dataUri ?? null,
       profile
