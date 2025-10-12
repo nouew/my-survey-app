@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, ArrowRight, RefreshCw, X, Search, Globe } from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCw, X, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { translations, Language } from "@/lib/translations";
@@ -17,6 +17,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   const [url, setUrl] = useState("https://attapoll.com");
   const [displayUrl, setDisplayUrl] = useState(url);
   const t = translations[lang];
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleUrlSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,18 +27,24 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     }
     setDisplayUrl(finalUrl);
   };
+  
+  const handleRefresh = () => {
+    if (iframeRef.current) {
+        iframeRef.current.src = iframeRef.current.src;
+    }
+  }
 
   return (
     <div className="w-full h-[80vh] flex flex-col bg-card border rounded-lg shadow-lg">
       {/* Header / Control Bar */}
       <div className="flex items-center p-2 border-b gap-2 bg-muted/50 rounded-t-lg">
-        <Button variant="ghost" size="icon" disabled>
+        <Button variant="ghost" size="icon" onClick={() => iframeRef.current?.contentWindow?.history.back()} >
           <ArrowLeft />
         </Button>
-        <Button variant="ghost" size="icon" disabled>
+        <Button variant="ghost" size="icon" onClick={() => iframeRef.current?.contentWindow?.history.forward()}>
           <ArrowRight />
         </Button>
-        <Button variant="ghost" size="icon" disabled>
+        <Button variant="ghost" size="icon" onClick={handleRefresh}>
           <RefreshCw />
         </Button>
         <div className="relative flex-grow">
@@ -54,19 +61,14 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-grow flex items-center justify-center p-8">
-        <div className="text-center text-muted-foreground">
-          <p>{t.browser.inDevelopment}</p>
-        </div>
-        {/*
-          When ready, the iframe will go here, like this:
-          <iframe
+      <div className="flex-grow flex items-center justify-center">
+         <iframe
+            ref={iframeRef}
             src={displayUrl}
             className="w-full h-full border-0"
             title="Survey Browser"
-            sandbox="allow-scripts allow-same-origin allow-forms"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
           />
-        */}
       </div>
       
       {/* Footer */}
