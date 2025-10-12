@@ -20,11 +20,11 @@ interface SurveyBrowserViewProps {
 }
 
 export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewProps) {
-  const [url, setUrl] = useState("https://attapoll.com");
-  const [displayUrl, setDisplayUrl] = useState(url);
+  const [url, setUrl] = useState("https://www.google.com");
+  const [displayUrl, setDisplayUrl] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isIframeLoading, setIsIframeLoading] = useState(true);
+  const [isIframeLoading, setIsIframeLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { toast } = useToast();
   const t = translations[lang];
@@ -59,7 +59,6 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     let finalUrl = url.trim();
     if (!finalUrl) return;
 
-    // Check if it's a search term or a URL
     const isUrl = /^(https?:\/\/)|([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(finalUrl);
 
     if (isUrl) {
@@ -112,11 +111,12 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       setIsLoading(true);
       try {
+          // Temporarily expand the container to capture the full page content
           const originalHeight = containerRef.current.style.height;
           const scrollHeight = iframeRef.current.contentWindow.document.body.scrollHeight;
           containerRef.current.style.height = `${scrollHeight}px`;
           
-          await new Promise(resolve => setTimeout(resolve, 50)); 
+          await new Promise(resolve => setTimeout(resolve, 50)); // Allow repaint
 
           const canvas = await html2canvas(iframeRef.current.contentWindow.document.body, {
             useCORS: true,
@@ -125,6 +125,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             windowHeight: scrollHeight
           });
 
+          // Restore container height
           containerRef.current.style.height = originalHeight;
 
           const dataUrl = canvas.toDataURL("image/png");
@@ -144,6 +145,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
       } catch (error) {
           console.error("Error capturing or analyzing screenshot:", error);
           toast({ variant: "destructive", title: "Capture Error", description: "Could not capture screen. The website's policy might be blocking it." });
+          // Ensure height is restored even on error
           if (containerRef.current) {
             containerRef.current.style.height = containerRef.current.style.height;
           }
@@ -165,7 +167,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             size="lg" 
             className="rounded-full h-16 w-16 shadow-2xl" 
             onClick={handleAnalyzeClick} 
-            disabled={isLoading || isIframeLoading}
+            disabled={isLoading || isIframeLoading || !displayUrl}
             aria-label="Analyze Screen"
           >
             {isLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Sparkles className="h-7 w-7" />}
@@ -191,7 +193,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               className="w-full bg-background ps-10"
-              placeholder={lang === "ar" ? "ابحث أو أدخل عنوان URL" : "Search or enter URL"}
+              placeholder={lang === "ar" ? "ابحث في جوجل أو أدخل عنوان URL" : "Search Google or enter URL"}
             />
           </form>
         </div>
@@ -202,17 +204,25 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       {/* Main Content Area */}
       <div ref={containerRef} className="flex-grow flex items-center justify-center relative overflow-auto bg-muted/20">
-         {isIframeLoading && (
+         {(isIframeLoading && displayUrl) && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary"/>
             </div>
          )}
+         
+         {!displayUrl && (
+            <div className="text-center text-muted-foreground">
+                <Globe className="mx-auto h-12 w-12 mb-4"/>
+                <p>{lang === 'ar' ? 'اكتب في الشريط أعلاه للبحث في جوجل أو إدخال رابط موقع' : 'Type in the bar above to search Google or enter a website URL'}</p>
+            </div>
+         )}
+
          <iframe
             ref={iframeRef}
             src={displayUrl}
-            className={cn("w-full h-full border-0", isIframeLoading && "opacity-0")}
+            className={cn("w-full h-full border-0", (isIframeLoading || !displayUrl) && "opacity-0")}
             title="Survey Browser"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
             onLoad={() => setIsIframeLoading(false)}
             onError={() => {
                 setIsIframeLoading(false);
