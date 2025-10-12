@@ -109,20 +109,22 @@ const generatePerfectAnswerFlow = ai.defineFlow(
   async (input) => {
     // 1. Check history using the tool
     if (input.questionData) {
-      const historyCheck = await ai.run({
-        prompt: `Check if there is a past answer for the question: "${input.questionData}"`,
-        tools: [answerHistoryTool],
-        model: 'googleai/gemini-2.5-flash',
-        input: {
-            userId: input.userId,
-            currentQuestion: input.questionData,
-        }
-      });
+        const historyCheck = await ai.run({
+            prompt: `Check if there is a past answer for the question: "${input.questionData}"`,
+            tools: [answerHistoryTool],
+            model: 'googleai/gemini-1.5-flash',
+            input: {
+                userId: input.userId,
+                currentQuestion: input.questionData,
+            }
+        });
 
-      const toolResponse = historyCheck.history[historyCheck.history.length-1].toolRequest?.output;
-      if (toolResponse?.found && toolResponse.answer) {
-        return { answer: `(From History) ${toolResponse.answer}` };
-      }
+        // The tool's output is in the last history message if it was called.
+        const toolOutput = historyCheck.history[historyCheck.history.length-1]?.toolRequest?.output;
+
+        if (toolOutput?.found && toolOutput.answer) {
+            return { answer: `(From History) ${toolOutput.answer}` };
+        }
     }
 
     // 2. If no history, generate a new answer
