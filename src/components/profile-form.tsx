@@ -123,7 +123,7 @@ export function ProfileForm({
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <UserCircle2 className="text-primary" />
+              <UserCircle2 className="text-primary-foreground" />
               {t.profile.title}
             </CardTitle>
             <CardDescription>{t.profile.description}</CardDescription>

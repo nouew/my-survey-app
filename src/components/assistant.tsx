@@ -98,7 +98,6 @@ export function Assistant({ profile, lang }: AssistantProps) {
                 handleImageFile(blob);
                 toast({
                     title: t.assistant.pasteSuccess,
-                    className: 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700',
                 });
             }
             break; 

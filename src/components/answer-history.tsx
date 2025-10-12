@@ -39,7 +39,7 @@ export function AnswerHistory({ history, lang, onClear }: AnswerHistoryProps) {
       <CardHeader className="flex-row items-center justify-between">
         <div className="space-y-1.5">
           <CardTitle className="flex items-center gap-2">
-            <History className="text-primary" />
+            <History className="text-primary-foreground" />
             {t.history.title}
           </CardTitle>
           <CardDescription>{t.history.description}</CardDescription>
