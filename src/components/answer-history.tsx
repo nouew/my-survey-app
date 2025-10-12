@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
-
 export interface AnswerRecord {
   question: string;
   answer: string;
@@ -21,9 +21,10 @@ interface AnswerHistoryProps {
   history: AnswerRecord[];
   lang: Language;
   onClear: () => void;
+  onDeleteItem: (index: number) => void;
 }
 
-export function AnswerHistory({ history, lang, onClear }: AnswerHistoryProps) {
+export function AnswerHistory({ history, lang, onClear, onDeleteItem }: AnswerHistoryProps) {
   const t = translations[lang];
   const { toast } = useToast();
 
@@ -73,10 +74,16 @@ export function AnswerHistory({ history, lang, onClear }: AnswerHistoryProps) {
                     <div className="prose prose-sm dark:prose-invert whitespace-pre-wrap rounded-md border bg-muted/30 p-4">
                         <p className="text-muted-foreground">{item.answer}</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleCopy(item.answer)}>
-                      <ClipboardCopy className="me-2 h-4 w-4" />
-                      {t.history.copy}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleCopy(item.answer)}>
+                        <ClipboardCopy className="me-2 h-4 w-4" />
+                        {t.history.copy}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteItem(index)}>
+                        <Trash2 className="me-2 h-4 w-4" />
+                        {t.history.deleteQuestion}
+                      </Button>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
               ))}

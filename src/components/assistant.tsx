@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -59,6 +60,17 @@ export function Assistant({ profile, lang }: AssistantProps) {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
   };
   
+  const handleDeleteItem = (indexToDelete: number) => {
+    const updatedHistory = history.filter((_, index) => index !== indexToDelete);
+    setHistory(updatedHistory);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem(HISTORY_KEY);
+  }
+
   const handleImageFile = useCallback((file: File) => {
     if (file) {
       if (file.size > 4 * 1024 * 1024) { // 4MB limit
@@ -145,21 +157,17 @@ export function Assistant({ profile, lang }: AssistantProps) {
         answer: result.answer,
         timestamp: new Date().toISOString(),
       });
-      resetForm(false); // don't clear history
+      resetForm();
     }
     setIsLoading(false);
   };
   
-  const resetForm = (clearHistory = true) => {
+  const resetForm = () => {
     setQuestion("");
     setImage(null);
     setError(null);
     if(fileInputRef.current) {
         fileInputRef.current.value = "";
-    }
-    if(clearHistory) {
-      setHistory([]);
-      localStorage.removeItem(HISTORY_KEY);
     }
   }
 
@@ -229,7 +237,7 @@ export function Assistant({ profile, lang }: AssistantProps) {
                 t.assistant.generate
               )}
             </Button>
-            <Button variant="outline" onClick={() => resetForm(false)} disabled={isLoading}>
+            <Button variant="outline" onClick={resetForm} disabled={isLoading}>
                 <X className="w-4 h-4 me-1"/>
                 {t.assistant.clear}
             </Button>
@@ -246,7 +254,8 @@ export function Assistant({ profile, lang }: AssistantProps) {
       <AnswerHistory 
         history={history} 
         lang={lang} 
-        onClear={() => resetForm(true)}
+        onClear={clearHistory}
+        onDeleteItem={handleDeleteItem}
       />
 
     </div>

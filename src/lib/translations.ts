@@ -1,3 +1,4 @@
+
 export type Language = "en" | "ar";
 export type Direction = "ltr" | "rtl";
 
@@ -69,6 +70,7 @@ export const translations = {
       answer: "Answer",
       copy: "Copy Answer",
       copied: "Answer Copied!",
+      deleteQuestion: "Delete Question",
     },
   },
   ar: {
@@ -138,6 +140,7 @@ export const translations = {
       answer: "الإجابة",
       copy: "نسخ الإجابة",
       copied: "تم نسخ الإجابة!",
+      deleteQuestion: "حذف السؤال",
     },
   },
 };
