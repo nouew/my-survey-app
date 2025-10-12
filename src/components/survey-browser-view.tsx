@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { RefreshCw, X, Globe, Sparkles, Loader2, Maximize, Minimize } from "lucide-react";
+import { RefreshCw, X, Globe, Sparkles, Loader2, Maximize, Minimize, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { translations, Language } from "@/lib/translations";
@@ -12,12 +12,6 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const USER_ID_KEY = "global_insights_user_id";
-
-interface SurveyBrowserViewProps {
-  lang: Language;
-  profile: ProfileData | null;
-  onClose: () => void;
-}
 
 export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewProps) {
   const [urlInput, setUrlInput] = useState("");
@@ -32,6 +26,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   const t = translations[lang];
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const viewRef = useRef<HTMLDivElement>(null);
+  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     let storedUserId = localStorage.getItem(USER_ID_KEY);
@@ -50,8 +45,12 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+    };
   }, []);
   
   const navigateTo = useCallback((url: string) => {
@@ -59,7 +58,10 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     setLoadError(null);
     let finalUrl = url.trim();
 
-    if (!finalUrl) return;
+    if (!finalUrl) {
+      setIsIframeLoading(false);
+      return;
+    };
 
     if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
       finalUrl = "https://" + finalUrl;
@@ -67,6 +69,13 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     
     setUrlInput(finalUrl);
     setCurrentUrl(finalUrl);
+
+    // Set a timeout to detect if the iframe fails to load
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+    loadTimeoutRef.current = setTimeout(() => {
+        handleIframeError();
+    }, 10000); // 10-second timeout
+
   }, []);
   
   const handleUrlSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -146,23 +155,35 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   };
   
   const handleIframeLoad = () => {
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
     setIsIframeLoading(false);
     try {
         if (iframeRef.current?.contentWindow) {
             const iframeUrl = iframeRef.current.contentWindow.location.href;
+            // 'about:blank' can be a sign of a failed navigation due to X-Frame-Options
             if (iframeUrl && iframeUrl !== 'about:blank') {
                 setUrlInput(iframeUrl);
+                setLoadError(null);
+            } else {
+               handleIframeError();
             }
         }
     } catch(e) {
-        setLoadError(null);
+        handleIframeError();
     }
   };
 
-  const handleIframeError = (e: React.SyntheticEvent<HTMLIFrameElement, Event>) => {
+  const handleIframeError = () => {
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
     setIsIframeLoading(false);
-    setLoadError(lang === 'ar' ? 'لا يمكن تحميل هذا الموقع. قد تكون سياسة أمان الموقع تمنع عرضه في إطار.' : 'Could not load this website. The site\'s security policy may be blocking it from being displayed in a frame.');
+    setLoadError(t.browser.loadError);
   };
+
+  const openInNewTab = () => {
+    if(currentUrl) {
+      window.open(currentUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
 
   return (
     <div 
@@ -196,7 +217,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               className="w-full bg-background ps-10"
-              placeholder={lang === "ar" ? "أدخل عنوان URL للموقع (e.g., attapoll.com)" : "Enter a website URL (e.g., attapoll.com)"}
+              placeholder={t.browser.urlPlaceholder}
             />
           </form>
         </div>
@@ -220,8 +241,8 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
           <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 p-4">
             <Card className="max-w-md w-full">
               <CardHeader>
-                <CardTitle>{lang === 'ar' ? 'ابدأ التصفح' : 'Start Browsing'}</CardTitle>
-                <CardDescription>{lang === 'ar' ? 'أدخل عنوان URL لموقع استبيان في الشريط أعلاه للبدء.' : 'Enter a survey website URL in the address bar above to begin.'}</CardDescription>
+                <CardTitle>{t.browser.startBrowsingTitle}</CardTitle>
+                <CardDescription>{t.browser.startBrowsingDescription}</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleUrlSubmit} className="flex gap-2">
@@ -230,20 +251,24 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
                     onChange={(e) => setUrlInput(e.target.value)}
                     placeholder="e.g., prolific.co"
                   />
-                  <Button type="submit">{lang === 'ar' ? 'اذهب' : 'Go'}</Button>
+                  <Button type="submit">{t.browser.go}</Button>
                 </form>
-                 <p className="text-xs text-muted-foreground mt-4">{lang === 'ar' ? 'ملاحظة: بعض المواقع قد لا تعمل بسبب سياسات الأمان.' : 'Note: Some websites may not work due to their security policies.'}</p>
+                 <p className="text-xs text-muted-foreground mt-4">{t.browser.securityNote}</p>
               </CardContent>
             </Card>
           </div>
         )}
 
         {loadError && !isIframeLoading && (
-            <div className="text-center text-destructive p-4 z-10">
-                 <X className="mx-auto h-12 w-12 mb-4"/>
-                 <p>{loadError}</p>
+            <div className="text-center text-destructive p-4 z-10 flex flex-col items-center gap-4">
+                 <X className="mx-auto h-12 w-12"/>
+                 <p className="max-w-sm">{loadError}</p>
+                 <Button variant="default" onClick={openInNewTab}>
+                    <ExternalLink className="me-2"/>
+                    {t.browser.openInNewTab}
+                 </Button>
                  <Button variant="link" onClick={() => { setLoadError(null); setCurrentUrl(null); setUrlInput('')}}>
-                    {lang === 'ar' ? 'العودة' : 'Go Back'}
+                    {t.browser.goBack}
                  </Button>
             </div>
         )}

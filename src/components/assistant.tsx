@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Lightbulb, Loader2, AlertCircle } from "lucide-react";
+import { Upload, Lightbulb, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { generateAnswerAction } from "@/app/actions";
 import type { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
+import { useToast } from "@/hooks/use-toast";
 
 const USER_ID_KEY = "global_insights_user_id";
 
@@ -26,6 +27,7 @@ export function Assistant({ profile, lang }: AssistantProps) {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   const t = translations[lang];
 
   useEffect(() => {
@@ -34,9 +36,8 @@ export function Assistant({ profile, lang }: AssistantProps) {
       setUserId(storedUserId);
     }
   }, []);
-
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  
+  const handleImageFile = useCallback((file: File) => {
     if (file) {
       if (file.size > 4 * 1024 * 1024) { // 4MB limit
         setError(t.assistant.imageSizeError);
@@ -55,7 +56,41 @@ export function Assistant({ profile, lang }: AssistantProps) {
       };
       reader.readAsDataURL(file);
     }
+  }, [t.assistant.imageSizeError, t.assistant.imageReadError]);
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleImageFile(file);
+    }
   };
+
+  const handlePaste = useCallback((event: ClipboardEvent) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            if (blob) {
+                handleImageFile(blob);
+                toast({
+                    title: t.assistant.pasteSuccess,
+                    className: 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700',
+                });
+            }
+            break; 
+        }
+    }
+  }, [handleImageFile, t.assistant.pasteSuccess, toast]);
+
+  useEffect(() => {
+      window.addEventListener('paste', handlePaste);
+      return () => {
+          window.removeEventListener('paste', handlePaste);
+      };
+  }, [handlePaste]);
+
 
   const handleSubmit = async () => {
     if (!profile) {
@@ -89,6 +124,16 @@ export function Assistant({ profile, lang }: AssistantProps) {
     }
     setIsLoading(false);
   };
+  
+  const resetForm = () => {
+    setQuestion("");
+    setImage(null);
+    setAnswer(null);
+    setError(null);
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  }
 
   return (
     <Card className="w-full">
@@ -123,15 +168,21 @@ export function Assistant({ profile, lang }: AssistantProps) {
             accept="image/png, image/jpeg, image/webp"
           />
           {image && (
-            <div className="relative w-20 h-20 rounded-md overflow-hidden border">
+            <div className="relative w-20 h-20 rounded-md overflow-hidden border p-1 bg-muted/30 flex items-center justify-center">
                 <Image
                     src={image.preview}
                     alt="Question image preview"
                     fill
-                    style={{ objectFit: 'cover' }}
+                    style={{ objectFit: 'contain' }}
                 />
             </div>
           )}
+           {image && (
+             <Button variant="ghost" size="sm" onClick={resetForm}>
+                <X className="w-4 h-4 me-1"/>
+                Clear
+            </Button>
+           )}
         </div>
       </CardContent>
       <CardFooter className="flex-col items-start gap-4">
@@ -153,7 +204,10 @@ export function Assistant({ profile, lang }: AssistantProps) {
         )}
         {answer && (
           <div className="w-full space-y-2 rounded-lg border bg-secondary/30 p-4">
-             <h3 className="font-semibold text-foreground">{t.assistant.perfectAnswer}</h3>
+             <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <CheckCircle className="text-green-500" />
+              {t.assistant.perfectAnswer}
+            </h3>
              <p className="text-muted-foreground whitespace-pre-wrap">{answer}</p>
           </div>
         )}
