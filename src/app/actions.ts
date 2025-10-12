@@ -31,7 +31,7 @@ function buildProfileString(userProfile: ProfileData | null): string {
       Gender: ${userProfile.gender}
       Date of Birth: ${userProfile.dob}
       Age: ${age}
-      Marital Status: ${user.maritalStatus}
+      Marital Status: ${userProfile.maritalStatus}
       Education: ${userProfile.education}
       Employment: ${userProfile.employment}
       Ethnicity: ${userProfile.ethnicity}
