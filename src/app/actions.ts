@@ -24,9 +24,14 @@ export async function generateAnswerAction(
     const profileString = `
       Income: ${userProfile.income}
       Occupation: ${userProfile.occupation}
-      Technology Used: ${userProfile.technology}
       Country: ${userProfile.country}
       State/Region: ${userProfile.state}
+      Gender: ${userProfile.gender}
+      Date of Birth: ${userProfile.dob}
+      Marital Status: ${userProfile.maritalStatus}
+      Education: ${userProfile.education}
+      Employment: ${userProfile.employment}
+      Ethnicity: ${userProfile.ethnicity}
     `;
 
     const input = {
@@ -47,3 +52,5 @@ export async function generateAnswerAction(
     return { error: "An unexpected error occurred. Please try again later." };
   }
 }
+
+    

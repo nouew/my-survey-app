@@ -1,10 +1,59 @@
 export interface ProfileData {
   income: string;
   occupation: string;
-  technology: string;
   country: string;
   state: string;
+  gender: string;
+  dob: string;
+  maritalStatus: string;
+  education: string;
+  employment: string;
+  ethnicity: string;
 }
+
+export const genders = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "non-binary", label: "Non-binary" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+export const maritalStatuses = [
+    { value: "single", label: "Single" },
+    { value: "married", label: "Married" },
+    { value: "divorced", label: "Divorced" },
+    { value: "widowed", label: "Widowed" },
+];
+
+export const educationLevels = [
+    { value: "high_school", label: "High School or less" },
+    { value: "some_college", label: "Some College" },
+    { value: "associates", label: "Associate's Degree" },
+    { value: "bachelors", label: "Bachelor's Degree" },
+    { value: "masters", label: "Master's Degree" },
+    { value: "doctorate", label: "Doctorate or higher" },
+];
+
+export const employmentStatuses = [
+    { value: "employed_full_time", label: "Employed full-time" },
+    { value: "employed_part_time", label: "Employed part-time" },
+    { value: "self_employed", label: "Self-employed" },
+    { value: "unemployed", label: "Unemployed" },
+    { value: "student", label: "Student" },
+    { value: "retired", label: "Retired" },
+];
+
+export const ethnicities = [
+    { value: "white", label: "White" },
+    { value: "hispanic_latino", label: "Hispanic or Latino" },
+    { value: "black_african_american", label: "Black or African American" },
+    { value: "asian", label: "Asian" },
+    { value: "native_american_alaskan_native", label: "American Indian or Alaska Native" },
+    { value: "middle_eastern_north_african", label: "Middle Eastern or North African" },
+    { value: "native_hawaiian_pacific_islander", label: "Native Hawaiian or Other Pacific Islander" },
+    { value: "other", label: "Other" },
+];
+
 
 export const countries = [
   { name: "United States", code: "US" },
@@ -182,3 +231,5 @@ export const states: { [country: string]: { name: string; code: string }[] } = {
     { name: "Provence-Alpes-Côte d'Azur", code: "PAC" },
   ],
 };
+
+    
