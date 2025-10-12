@@ -10,39 +10,89 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {cosineSimilarity} from 'genkit';
 
 // Dummy in-memory storage. In a real app, you'd use a database like Firestore.
 const userAnswers: { [key: string]: { question: string, answer: string }[] } = {};
 
+// == Smart History Tool Definition ==
+
+// Input for the similarity check flow
+const FindSimilarQuestionInputSchema = z.object({
+  userId: z.string(),
+  newQuestion: z.string(),
+});
+
+// Defines a flow to find a semantically similar question.
+const findSimilarQuestionFlow = ai.defineFlow(
+  {
+    name: 'findSimilarQuestionFlow',
+    inputSchema: FindSimilarQuestionInputSchema,
+    outputSchema: z.object({
+      found: z.boolean(),
+      previousAnswer: z.string().optional(),
+    }),
+  },
+  async ({ userId, newQuestion }) => {
+    const history = userAnswers[userId];
+    if (!history || history.length === 0) {
+      return { found: false };
+    }
+
+    // Embed the new question and all historical questions.
+    const questionsToEmbed = [newQuestion, ...history.map(qa => qa.question)];
+    const embeddings = await ai.embed({
+      model: 'googleai/embedding-004',
+      content: questionsToEmbed,
+    });
+
+    const newQuestionEmbedding = embeddings[0];
+    const historyEmbeddings = embeddings.slice(1);
+
+    let bestMatch = { score: -1, index: -1 };
+
+    // Find the best match using cosine similarity.
+    for (let i = 0; i < historyEmbeddings.length; i++) {
+      const score = cosineSimilarity(newQuestionEmbedding, historyEmbeddings[i]);
+      if (score > bestMatch.score) {
+        bestMatch = { score, index: i };
+      }
+    }
+    
+    // Only consider it a match if the similarity is very high.
+    const SIMILARITY_THRESHOLD = 0.95; 
+    if (bestMatch.score > SIMILARITY_THRESHOLD) {
+      return {
+        found: true,
+        previousAnswer: history[bestMatch.index].answer,
+      };
+    }
+
+    return { found: false };
+  }
+);
+
+
 const answerHistoryTool = ai.defineTool(
   {
     name: 'answerHistoryTool',
-    description: 'Check if this exact question has been answered before. Returns the previous answer if found.',
+    description: 'Check if a semantically similar question has been answered before. Returns the previous answer if a very similar question is found.',
     inputSchema: z.object({
       userId: z.string().describe("The user's unique ID."),
       question: z.string().describe('The current survey question being asked.'),
     }),
     outputSchema: z.object({
-      found: z.boolean().describe('Whether the question was found.'),
+      found: z.boolean().describe('Whether a similar question was found.'),
       previousAnswer: z.string().optional().describe('The previously given answer.'),
     }),
   },
   async ({ userId, question }) => {
-    if (!userAnswers[userId] || !question) {
-      return { found: false };
-    }
-    
-    // Use a simple case-insensitive comparison for an exact match.
-    const existing = userAnswers[userId].find(qa => qa.question.toLowerCase() === question.toLowerCase());
-
-    if (existing) {
-      return { found: true, previousAnswer: existing.answer };
-    }
-    
-    return { found: false };
+    // The tool now simply invokes the dedicated flow for this logic.
+    return findSimilarQuestionFlow({ userId, newQuestion: question });
   }
 );
 
+// == Main Answer Generation Flow ==
 
 const GeneratePerfectAnswerInputSchema = z.object({
   userId: z.string().describe("The user's unique ID."),
@@ -73,7 +123,7 @@ const generateAnswerPrompt = ai.definePrompt({
 Your PRIMARY goal is CONSISTENCY.
 
 Follow these rules STRICTLY:
-1.  First, ALWAYS use the 'answerHistoryTool' to check if this exact question has been answered before.
+1.  First, ALWAYS use the 'answerHistoryTool' to check if a semantically similar question has been answered before. This tool is smart and understands the meaning of questions.
 2.  If the tool finds a previous answer ('found: true'), you MUST use that 'previousAnswer' as your response. Do NOT generate a new one.
 3.  If the tool does NOT find a previous answer ('found: false'), you must generate a new, plausible answer based on the user's profile.
 4.  CRITICAL RULE: When generating a new answer, NEVER say "I do not have this information," "I don't know," or any similar phrase. You MUST invent a consistent and believable answer that fits the user's persona based on their profile.
@@ -101,9 +151,6 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     outputSchema: GeneratePerfectAnswerOutputSchema,
   },
   async (input) => {
-    // We will let the model decide whether to use the tool.
-    // If it uses it and finds an answer, it will use it.
-    // If not, it will generate one.
     const { output } = await generateAnswerPrompt(input);
 
     if (!output) {
@@ -112,12 +159,14 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     
     const newAnswer = output.answer;
     
-    // Save the newly generated answer to our "database" for future exact matches,
-    // but only if the question was text-based and doesn't already exist.
+    // Save the newly generated answer to our "database" for future matches.
     if (input.questionData) {
         if (!userAnswers[input.userId]) {
             userAnswers[input.userId] = [];
         }
+        
+        // To prevent saving slight variations of the same question, we do a quick check.
+        // A more robust solution might re-run the similarity check, but this is a good balance.
         const alreadyExists = userAnswers[input.userId].some(qa => qa.question.toLowerCase() === input.questionData!.toLowerCase());
 
         if (!alreadyExists) {
