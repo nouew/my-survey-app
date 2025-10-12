@@ -64,7 +64,7 @@ export function SurveyBrowserPage({ lang }: SurveyBrowserPageProps) {
                  <CardDescription>{t.browser.readyDescription}</CardDescription>
             </CardHeader>
             <CardContent>
-                <Button onClick={() => setShowBrowser(true)} disabled={!profile}>
+                <Button onClick={() => setShowBrowser(true)}>
                      <Rocket className="me-2"/>
                     {t.browser.startBrowsing}
                 </Button>
