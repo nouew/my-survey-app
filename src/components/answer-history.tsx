@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -27,6 +28,16 @@ interface AnswerHistoryProps {
 export function AnswerHistory({ history, lang, onClear, onDeleteItem }: AnswerHistoryProps) {
   const t = translations[lang];
   const { toast } = useToast();
+  const [openItem, setOpenItem] = useState<string | undefined>(history.length > 0 ? "item-0" : undefined);
+
+  useEffect(() => {
+    // Automatically open the first item (the newest one) when history updates
+    if (history.length > 0) {
+      setOpenItem("item-0");
+    } else {
+      setOpenItem(undefined);
+    }
+  }, [history]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -40,7 +51,7 @@ export function AnswerHistory({ history, lang, onClear, onDeleteItem }: AnswerHi
       <CardHeader className="flex-row items-center justify-between">
         <div className="space-y-1.5">
           <CardTitle className="flex items-center gap-2">
-            <History className="text-primary-foreground" />
+            <History className="text-primary" />
             {t.history.title}
           </CardTitle>
           <CardDescription>{t.history.description}</CardDescription>
@@ -59,7 +70,13 @@ export function AnswerHistory({ history, lang, onClear, onDeleteItem }: AnswerHi
           </div>
         ) : (
           <ScrollArea className="h-96">
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion 
+              type="single" 
+              collapsible 
+              className="w-full"
+              value={openItem}
+              onValueChange={setOpenItem}
+            >
               {history.map((item, index) => (
                 <AccordionItem value={`item-${index}`} key={index}>
                   <AccordionTrigger>

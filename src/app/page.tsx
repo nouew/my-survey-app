@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -32,7 +33,7 @@ export default function Home() {
       <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
         <header className="w-full max-w-7xl flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
-            <Flame className="w-8 h-8 text-primary-foreground" />
+            <Flame className="w-8 h-8 text-primary" />
             <h1 className="text-2xl md:text-3xl font-bold text-foreground font-headline">
               {t.appName}
             </h1>
