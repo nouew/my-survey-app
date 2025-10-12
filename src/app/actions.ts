@@ -8,6 +8,18 @@ interface ActionResult {
   error?: string;
 }
 
+// Function to calculate age from date of birth
+function calculateAge(dob: string): number {
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 export async function generateAnswerAction(
   userId: string,
   questionData: string,
@@ -25,6 +37,7 @@ export async function generateAnswerAction(
   }
 
   try {
+    const age = calculateAge(userProfile.dob);
     const profileString = `
       Income: ${userProfile.income}
       Occupation: ${userProfile.occupation}
@@ -32,6 +45,7 @@ export async function generateAnswerAction(
       State/Region: ${userProfile.state}
       Gender: ${userProfile.gender}
       Date of Birth: ${userProfile.dob}
+      Age: ${age}
       Marital Status: ${userProfile.maritalStatus}
       Education: ${userProfile.education}
       Employment: ${userProfile.employment}
@@ -40,7 +54,7 @@ export async function generateAnswerAction(
 
     const input = {
       userId,
-      ...(questionData && { questionData }),
+      questionData: questionData || '',
       ...(imageFile && { imageFile }),
       userProfile: profileString,
     };

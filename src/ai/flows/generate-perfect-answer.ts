@@ -48,11 +48,11 @@ const answerHistoryTool = ai.defineTool(
 
 const GeneratePerfectAnswerInputSchema = z.object({
   userId: z.string().describe("The user's unique ID."),
-  questionData: z.string().optional().describe('The survey question text.'),
+  questionData: z.string().describe('The survey question text.'),
   imageFile: z.string().optional().describe(
     'An image of the survey question, as a data URI that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.'
   ),
-  userProfile: z.string().describe('The user profile information.'),
+  userProfile: z.string().describe('The user profile information, including demographics like age.'),
 });
 export type GeneratePerfectAnswerInput = z.infer<typeof GeneratePerfectAnswerInputSchema>;
 
@@ -72,13 +72,13 @@ const generateAnswerPrompt = ai.definePrompt({
   output: {schema: GeneratePerfectAnswerOutputSchema},
   prompt: `You are an AI assistant designed to provide the most accurate and consistent answer to survey questions based on a user's profile and their past answers.
 
-Your primary goal is consistency. Before generating a new answer, you MUST use the 'answerHistoryTool' to check if a similar question has been answered before.
+Your primary goal is consistency. Before generating a new answer, you MUST use the 'answerHistoryTool' to check if a similar question has been answered before. The tool requires the 'userId' and the 'currentQuestion'.
 
-- If the tool finds a previous answer ('found: true'), you MUST use that exact answer. You can optionally mention that it's from history.
+- If the tool finds a previous answer ('found: true'), you MUST use that exact answer.
 - If the tool does not find a previous answer ('found: false'), you will generate a new, best possible answer based on the user's profile and the question provided.
 
 Analyze the question from the text and/or image.
-Based on the user's profile and the result from the history tool, determine the most fitting answer.
+Based on the user's profile (including their precise age) and the result from the history tool, determine the most fitting answer.
 
 - If it's a multiple-choice question, your answer must be one of the provided options.
 - If it's a text-based/open-ended question, generate a concise and relevant answer.
@@ -105,26 +105,28 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     outputSchema: GeneratePerfectAnswerOutputSchema,
   },
   async (input) => {
-    
-    // Always run the prompt which will internally use the tool.
+
     const { output } = await generateAnswerPrompt({
       ...input,
-      currentQuestion: input.questionData || '', // Pass current question to the tool via the prompt
+      // The prompt will see this and can pass it to the tool.
+      // We pass it here to make it available in the prompt's context.
+      currentQuestion: input.questionData, 
     });
 
     if (!output) {
       throw new Error("AI failed to generate an answer.");
     }
+    
     const newAnswer = output.answer;
     
-    // Save the new answer to our "database" only if it's not a historical one.
-    // A more robust check would be to see if the tool was used and returned found:true.
-    // For now, we'll check if the answer contains the "(From History)" marker.
-    if (input.questionData && !newAnswer.includes('(From History)')) {
+    // Save the new answer to our "database".
+    // A robust way to check if the answer is new is to see if the tool was used and returned found: false,
+    // but for this demo, we'll just check for a marker if we decide to add one, or save every time.
+    if (input.questionData) {
         if (!userAnswers[input.userId]) {
             userAnswers[input.userId] = [];
         }
-        // Avoid duplicates
+        // Avoid duplicates just in case
         if (!userAnswers[input.userId].some(qa => qa.question.toLowerCase() === input.questionData!.toLowerCase())) {
           userAnswers[input.userId].push({ question: input.questionData, answer: newAnswer });
         }
