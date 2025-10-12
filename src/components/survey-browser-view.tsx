@@ -10,7 +10,7 @@ import type { ProfileData } from "@/lib/data";
 import { generateAnswerFromScreenshot } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
+import { GoogleHome } from "@/components/google-home";
 
 const USER_ID_KEY = "global_insights_user_id";
 
@@ -22,7 +22,7 @@ interface SurveyBrowserViewProps {
 
 export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewProps) {
   const [urlInput, setUrlInput] = useState("https://www.google.com");
-  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // For AI analysis
   const [isIframeLoading, setIsIframeLoading] = useState(false);
@@ -33,7 +33,6 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   const t = translations[lang];
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const viewRef = useRef<HTMLDivElement>(null);
-
 
   useEffect(() => {
     let storedUserId = localStorage.getItem(USER_ID_KEY);
@@ -55,8 +54,8 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
 
   }, []);
-
-  const navigateTo = (url: string) => {
+  
+  const navigateTo = useCallback((url: string) => {
     setIsIframeLoading(true);
     setLoadError(null);
     let finalUrl = url.trim();
@@ -72,8 +71,8 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     }
     
     setUrlInput(finalUrl);
-    setIframeSrc(finalUrl);
-  };
+    setCurrentUrl(finalUrl);
+  }, []);
   
   const handleUrlSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -187,7 +186,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             size="lg" 
             className="rounded-full h-16 w-16 shadow-2xl" 
             onClick={handleAnalyzeClick} 
-            disabled={isLoading || isIframeLoading || !iframeSrc || !!loadError}
+            disabled={isLoading || isIframeLoading || !currentUrl || !!loadError}
             aria-label="Analyze Screen"
           >
             {isLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Sparkles className="h-7 w-7" />}
@@ -197,13 +196,13 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       {/* Header / Control Bar */}
       <div className="flex items-center p-2 border-b gap-2 bg-muted/50 rounded-t-lg flex-shrink-0">
-        <Button variant="ghost" size="icon" onClick={goBack} disabled={!iframeSrc}>
+        <Button variant="ghost" size="icon" onClick={goBack} disabled={!currentUrl}>
           <ArrowLeft />
         </Button>
-        <Button variant="ghost" size="icon" onClick={goForward} disabled={!iframeSrc}>
+        <Button variant="ghost" size="icon" onClick={goForward} disabled={!currentUrl}>
           <ArrowRight />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={!iframeSrc}>
+        <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={!currentUrl}>
           <RefreshCw />
         </Button>
         <div className="relative flex-grow">
@@ -226,44 +225,39 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-grow flex items-center justify-center relative overflow-auto bg-muted/20">
-         {isIframeLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+      <div className="flex-grow flex items-center justify-center relative overflow-auto bg-white">
+        {isIframeLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
                 <Loader2 className="h-8 w-8 animate-spin text-primary"/>
             </div>
-         )}
-         
-         {!iframeSrc && !isIframeLoading && (
-            <div className="text-center text-muted-foreground p-4">
-                <Globe className="mx-auto h-12 w-12 mb-4"/>
-                <p>{lang === 'ar' ? 'اكتب في الشريط أعلاه للبحث في جوجل أو إدخال رابط موقع' : 'Type in the bar above to search Google or enter a website URL'}</p>
-            </div>
-         )}
-         
-         {loadError && !isIframeLoading && (
-            <div className="text-center text-destructive p-4">
+        )}
+
+        {!currentUrl && !isIframeLoading && (
+            <GoogleHome onSearch={navigateTo} lang={lang} />
+        )}
+
+        {loadError && !isIframeLoading && (
+            <div className="text-center text-destructive p-4 z-10">
                  <X className="mx-auto h-12 w-12 mb-4"/>
                  <p>{loadError}</p>
-                 <Button variant="link" onClick={() => { setLoadError(null); setIframeSrc(null); setUrlInput('https://www.google.com')}}>
+                 <Button variant="link" onClick={() => { setLoadError(null); setCurrentUrl(null); setUrlInput('https://www.google.com')}}>
                     {lang === 'ar' ? 'حاول مرة أخرى' : 'Try again'}
                  </Button>
             </div>
-         )}
+        )}
 
-         {iframeSrc && (
+        {currentUrl && (
             <iframe
-                key={iframeSrc} // Add key to force re-creation
                 ref={iframeRef}
-                src={iframeSrc}
+                src={currentUrl}
                 className={cn("w-full h-full border-0", (isIframeLoading || !!loadError) && "opacity-0")}
                 title="Survey Browser"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
                 onLoad={handleIframeLoad}
                 onError={handleIframeError}
             />
-         )}
+        )}
       </div>
-      
     </div>
   );
 }
