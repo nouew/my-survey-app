@@ -21,11 +21,11 @@ interface SurveyBrowserViewProps {
 }
 
 export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewProps) {
-  const [url, setUrl] = useState("https://www.google.com");
-  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState("https://www.google.com/search?q=survey+websites");
+  const [displayUrl, setDisplayUrl] = useState<string | null>("https://www.google.com/search?q=survey+websites");
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isIframeLoading, setIsIframeLoading] = useState(false);
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { toast } = useToast();
   const t = translations[lang];
@@ -205,14 +205,14 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       {/* Main Content Area */}
       <div ref={containerRef} className="flex-grow flex items-center justify-center relative overflow-auto bg-muted/20">
-         {isIframeLoading && displayUrl && (
+         {(isIframeLoading || !displayUrl) && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary"/>
             </div>
          )}
          
          {!displayUrl && (
-            <div className="text-center text-muted-foreground">
+            <div className="text-center text-muted-foreground p-4">
                 <Globe className="mx-auto h-12 w-12 mb-4"/>
                 <p>{lang === 'ar' ? 'اكتب في الشريط أعلاه للبحث في جوجل أو إدخال رابط موقع' : 'Type in the bar above to search Google or enter a website URL'}</p>
             </div>
@@ -222,7 +222,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             <iframe
                 ref={iframeRef}
                 src={displayUrl}
-                className={cn("w-full h-full border-0", isIframeLoading && "opacity-0")}
+                className={cn("w-full h-full border-0", (isIframeLoading || !displayUrl) && "opacity-0")}
                 title="Survey Browser"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
                 onLoad={() => setIsIframeLoading(false)}
