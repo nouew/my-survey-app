@@ -21,7 +21,7 @@ interface SurveyBrowserViewProps {
 }
 
 export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewProps) {
-  const [currentUrl, setCurrentUrl] = useState("https://www.google.com");
+  const [urlInput, setUrlInput] = useState("https://www.google.com");
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // For AI analysis
@@ -71,14 +71,14 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
       finalUrl = `https://www.google.com/search?q=${encodeURIComponent(finalUrl)}`;
     }
     
-    setCurrentUrl(finalUrl);
+    setUrlInput(finalUrl);
     setIframeSrc(finalUrl);
   };
   
   const handleUrlSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentUrl) return;
-    navigateTo(currentUrl);
+    if (!urlInput) return;
+    navigateTo(urlInput);
   };
 
   const goBack = () => iframeRef.current?.contentWindow?.history.back();
@@ -123,11 +123,14 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       setIsLoading(true);
       try {
+          // Temporarily set scroll to top to capture the visible part
+          iframeRef.current.contentWindow.document.documentElement.scrollTop = 0;
+          
           const canvas = await html2canvas(iframeRef.current.contentWindow.document.body, {
             useCORS: true,
             allowTaint: true,
-            height: iframeRef.current.contentWindow.document.body.scrollHeight,
-            windowHeight: iframeRef.current.contentWindow.document.body.scrollHeight
+            height: iframeRef.current.contentWindow.innerHeight,
+            windowHeight: iframeRef.current.contentWindow.innerHeight,
           });
 
           const dataUrl = canvas.toDataURL("image/png");
@@ -157,9 +160,8 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     try {
         if (iframeRef.current?.contentWindow) {
             const iframeUrl = iframeRef.current.contentWindow.location.href;
-            // A bit of a hack to detect blocked pages which don't throw an error but load 'about:blank'
-            if (iframeUrl && iframeUrl !== 'about:blank') {
-                setCurrentUrl(iframeUrl);
+            if (iframeUrl && iframeUrl !== 'about:blank' && !iframeUrl.startsWith('https://www.google.com/search')) {
+                setUrlInput(iframeUrl);
             }
         }
     } catch(e) {
@@ -180,7 +182,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             isFullscreen && "fixed inset-0 z-50 h-screen"
         )}
     >
-      <div className="absolute bottom-20 end-6 z-20">
+      <div className="absolute bottom-4 end-4 z-20 flex flex-col gap-2">
          <Button 
             size="lg" 
             className="rounded-full h-16 w-16 shadow-2xl" 
@@ -195,10 +197,10 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       {/* Header / Control Bar */}
       <div className="flex items-center p-2 border-b gap-2 bg-muted/50 rounded-t-lg flex-shrink-0">
-        <Button variant="ghost" size="icon" onClick={goBack} >
+        <Button variant="ghost" size="icon" onClick={goBack} disabled={!iframeSrc}>
           <ArrowLeft />
         </Button>
-        <Button variant="ghost" size="icon" onClick={goForward}>
+        <Button variant="ghost" size="icon" onClick={goForward} disabled={!iframeSrc}>
           <ArrowRight />
         </Button>
         <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={!iframeSrc}>
@@ -208,8 +210,8 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
           <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <form onSubmit={handleUrlSubmit}>
             <Input
-              value={currentUrl}
-              onChange={(e) => setCurrentUrl(e.target.value)}
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
               className="w-full bg-background ps-10"
               placeholder={lang === "ar" ? "ابحث في جوجل أو أدخل عنوان URL" : "Search Google or enter URL"}
             />
@@ -218,6 +220,9 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
         <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
           {isFullscreen ? <Minimize /> : <Maximize />}
         </Button>
+         <Button onClick={onClose} variant="ghost" size="icon" className={cn("text-destructive hover:text-destructive hover:bg-destructive/10", isFullscreen && "hidden")}>
+            <X />
+          </Button>
       </div>
 
       {/* Main Content Area */}
@@ -239,11 +244,15 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             <div className="text-center text-destructive p-4">
                  <X className="mx-auto h-12 w-12 mb-4"/>
                  <p>{loadError}</p>
+                 <Button variant="link" onClick={() => { setLoadError(null); setIframeSrc(null); }}>
+                    {lang === 'ar' ? 'حاول مرة أخرى' : 'Try again'}
+                 </Button>
             </div>
          )}
 
          {iframeSrc && (
             <iframe
+                key={iframeSrc} // Add key to force re-creation
                 ref={iframeRef}
                 src={iframeSrc}
                 className={cn("w-full h-full border-0", (isIframeLoading || !!loadError) && "opacity-0")}
@@ -255,13 +264,6 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
          )}
       </div>
       
-      {/* Footer */}
-      <div className={cn("flex justify-end p-2 border-t rounded-b-lg bg-muted/50 flex-shrink-0", isFullscreen && "hidden")}>
-          <Button onClick={onClose} variant="destructive">
-            <X className="me-2" />
-            {lang === "ar" ? "إغلاق المتصفح" : "Close Browser"}
-          </Button>
-      </div>
     </div>
   );
 }
