@@ -12,7 +12,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GeneratePerfectAnswerInputSchema = z.object({
-  questionData: z.string().describe('The survey question text.'),
+  questionData: z.string().optional().describe('The survey question text.'),
   imageFile: z.string().optional().describe(
     'An image of the survey question, as a data URI that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.'
   ),
@@ -33,21 +33,27 @@ const prompt = ai.definePrompt({
   name: 'generatePerfectAnswerPrompt',
   input: {schema: GeneratePerfectAnswerInputSchema},
   output: {schema: GeneratePerfectAnswerOutputSchema},
-  prompt: `You are an AI assistant designed to provide the most accurate answer to survey questions.
+  prompt: `You are an AI assistant designed to provide the most accurate and consistent answer to survey questions based on a user's profile.
 
-You will receive the question data, an optional image of the question, and the user's profile information.
+You will receive the survey question, which can be provided as text, an image, or both. Your task is to analyze all the provided information (text and/or image) to understand the question and any multiple-choice options.
 
-Analyze the question and options (if any) from the text or image.
-Determine the type of question (e.g., text-based, multiple-choice).
-Consider the user's profile information to tailor the answer.
+Based on the user's profile, determine the most fitting answer.
 
-Question Data: {{{questionData}}}
-{{#if imageFile}}
-Image: {{media url=imageFile}}
+- If it's a multiple-choice question, your answer must be one of the provided options.
+- If it's a text-based/open-ended question, generate a concise and relevant answer.
+
+User Profile:
+{{{userProfile}}}
+
+{{#if questionData}}
+Question Text: {{{questionData}}}
 {{/if}}
-User Profile: {{{userProfile}}}
 
-Generate the perfect answer:
+{{#if imageFile}}
+Question Image: {{media url=imageFile}}
+{{/if}}
+
+Generate the perfect answer based on all the information.
 `,
 });
 

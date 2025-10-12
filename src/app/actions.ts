@@ -35,7 +35,7 @@ export async function generateAnswerAction(
     `;
 
     const input = {
-      questionData,
+      ...(questionData && { questionData }),
       ...(imageFile && { imageFile }),
       userProfile: profileString,
     };
@@ -52,5 +52,3 @@ export async function generateAnswerAction(
     return { error: "An unexpected error occurred. Please try again later." };
   }
 }
-
-    
