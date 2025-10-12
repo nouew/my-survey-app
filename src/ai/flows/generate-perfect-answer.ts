@@ -65,19 +65,19 @@ export async function generatePerfectAnswer(input: GeneratePerfectAnswerInput): 
 
 const generateAnswerPrompt = ai.definePrompt({
   name: 'generateAnswerPrompt',
+  tools: [answerHistoryTool],
   input: {schema: GeneratePerfectAnswerInputSchema},
   output: {schema: GeneratePerfectAnswerOutputSchema},
-  prompt: `You are an AI assistant designed to provide the most accurate and consistent answer to survey questions based on a user's profile.
+  prompt: `You are an AI assistant designed to provide the most accurate and consistent answer to survey questions based on a user's profile and past answers.
 
-Your primary goal is consistency and accuracy based ONLY on the provided profile.
+Your PRIMARY goal is CONSISTENCY.
 
-Analyze the question from the text and/or image.
-Based on the user's profile, determine the most fitting answer.
-
-- If the question asks for information available in the user profile, provide it.
-- If the question asks for personal information or a preference NOT available in the user profile (e.g., "What is your favorite color?", "What car do you drive?"), you MUST respond with "I do not have this information in my profile."
-- Do NOT invent or make up any information that is not explicitly in the user profile.
-- If it's a multiple-choice question, your answer must be one of the provided options that best fits the profile. If no option fits, state that you cannot answer.
+Follow these rules STRICTLY:
+1.  First, ALWAYS use the 'answerHistoryTool' to check if this exact question has been answered before.
+2.  If the tool finds a previous answer ('found: true'), you MUST use that 'previousAnswer' as your response. Do NOT generate a new one.
+3.  If the tool does NOT find a previous answer ('found: false'), you must generate a new, plausible answer based on the user's profile.
+4.  CRITICAL RULE: When generating a new answer, NEVER say "I do not have this information," "I don't know," or any similar phrase. You MUST invent a consistent and believable answer that fits the user's persona based on their profile.
+5.  If it's a multiple-choice question, your answer must be one of the provided options.
 
 User Profile:
 {{{userProfile}}}
@@ -90,7 +90,7 @@ Question Text: {{{questionData}}}
 Question Image: {{media url=imageFile}}
 {{/if}}
 
-Generate the perfect, most consistent answer based on these strict rules.
+Generate the perfect, most CONSISTENT answer based on these strict rules.
 `,
 });
 
@@ -101,14 +101,9 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     outputSchema: GeneratePerfectAnswerOutputSchema,
   },
   async (input) => {
-    // First, check the history tool for an exact match.
-    const history = await answerHistoryTool({userId: input.userId, question: input.questionData});
-
-    if (history.found && history.previousAnswer) {
-      return { answer: history.previousAnswer };
-    }
-
-    // If not found in history, generate a new answer.
+    // We will let the model decide whether to use the tool.
+    // If it uses it and finds an answer, it will use it.
+    // If not, it will generate one.
     const { output } = await generateAnswerPrompt(input);
 
     if (!output) {
@@ -117,13 +112,15 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     
     const newAnswer = output.answer;
     
-    // Save the newly generated answer to our "database" for future exact matches.
+    // Save the newly generated answer to our "database" for future exact matches,
+    // but only if the question was text-based and doesn't already exist.
     if (input.questionData) {
         if (!userAnswers[input.userId]) {
             userAnswers[input.userId] = [];
         }
-        // Avoid duplicates just in case
-        if (!userAnswers[input.userId].some(qa => qa.question.toLowerCase() === input.questionData!.toLowerCase())) {
+        const alreadyExists = userAnswers[input.userId].some(qa => qa.question.toLowerCase() === input.questionData!.toLowerCase());
+
+        if (!alreadyExists) {
           userAnswers[input.userId].push({ question: input.questionData, answer: newAnswer });
         }
     }
