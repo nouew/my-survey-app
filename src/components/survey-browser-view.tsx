@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -21,7 +22,7 @@ interface SurveyBrowserViewProps {
 
 export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewProps) {
   const [url, setUrl] = useState("https://www.google.com");
-  const [displayUrl, setDisplayUrl] = useState("");
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isIframeLoading, setIsIframeLoading] = useState(false);
@@ -204,7 +205,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       {/* Main Content Area */}
       <div ref={containerRef} className="flex-grow flex items-center justify-center relative overflow-auto bg-muted/20">
-         {(isIframeLoading && displayUrl) && (
+         {isIframeLoading && displayUrl && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary"/>
             </div>
@@ -217,22 +218,24 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             </div>
          )}
 
-         <iframe
-            ref={iframeRef}
-            src={displayUrl}
-            className={cn("w-full h-full border-0", (isIframeLoading || !displayUrl) && "opacity-0")}
-            title="Survey Browser"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
-            onLoad={() => setIsIframeLoading(false)}
-            onError={() => {
-                setIsIframeLoading(false);
-                 toast({
-                    variant: "destructive",
-                    title: "Load Error",
-                    description: "Could not load the website. It might be blocking embedded browsers.",
-                });
-            }}
-          />
+         {displayUrl && (
+            <iframe
+                ref={iframeRef}
+                src={displayUrl}
+                className={cn("w-full h-full border-0", isIframeLoading && "opacity-0")}
+                title="Survey Browser"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
+                onLoad={() => setIsIframeLoading(false)}
+                onError={() => {
+                    setIsIframeLoading(false);
+                    toast({
+                        variant: "destructive",
+                        title: "Load Error",
+                        description: "Could not load the website. It might be blocking embedded browsers.",
+                    });
+                }}
+            />
+         )}
       </div>
       
       {/* Footer */}
