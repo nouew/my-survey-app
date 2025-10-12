@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, ArrowRight, RefreshCw, X, Globe, Sparkles, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { ArrowLeft, ArrowRight, RefreshCw, X, Globe, Sparkles, Loader2, Maximize, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { translations, Language } from "@/lib/translations";
 import type { ProfileData } from "@/lib/data";
 import { generateAnswerFromScreenshot } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { cn } from "@/lib/utils";
 
 
 const USER_ID_KEY = "global_insights_user_id";
@@ -25,13 +25,15 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { toast } = useToast();
   const t = translations[lang];
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
-    // Ensure we have a unique user ID for the session for the AI flow
     let storedUserId = localStorage.getItem(USER_ID_KEY);
     if (!storedUserId) {
       storedUserId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -39,21 +41,37 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     }
     setUserId(storedUserId);
 
-    // Dynamic import for html2canvas
     import('html2canvas').then(module => {
         (window as any).html2canvas = module.default;
     }).catch(error => console.error("Failed to load html2canvas", error));
+
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
 
   }, []);
 
   const handleUrlSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    let finalUrl = url;
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      finalUrl = "https://" + url;
+    let finalUrl = url.trim();
+    if (!finalUrl) return;
+
+    // Check if it's a search term or a URL
+    const isUrl = /^(https?:\/\/)|([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(finalUrl);
+
+    if (isUrl) {
+      if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
+        finalUrl = "https://" + finalUrl;
+      }
+    } else {
+      finalUrl = `https://www.google.com/search?q=${encodeURIComponent(finalUrl)}`;
     }
+    
     setDisplayUrl(finalUrl);
-    setIsIframeLoaded(false); // Reset loading state for new URL
+    setIsIframeLoaded(false);
   };
   
   const handleRefresh = () => {
@@ -62,6 +80,18 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
         iframeRef.current.src = iframeRef.current.src;
     }
   }
+
+  const toggleFullscreen = useCallback(() => {
+    if (!viewRef.current) return;
+    
+    if (!document.fullscreenElement) {
+        viewRef.current.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+  }, []);
   
   const handleAnalyzeClick = async () => {
       if (!iframeRef.current?.contentWindow || !containerRef.current) {
@@ -82,12 +112,11 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       setIsLoading(true);
       try {
-          // Temporarily set the iframe container to a large size to capture full content
           const originalHeight = containerRef.current.style.height;
           const scrollHeight = iframeRef.current.contentWindow.document.body.scrollHeight;
           containerRef.current.style.height = `${scrollHeight}px`;
           
-          await new Promise(resolve => setTimeout(resolve, 50)); // allow repaint
+          await new Promise(resolve => setTimeout(resolve, 50)); 
 
           const canvas = await html2canvas(iframeRef.current.contentWindow.document.body, {
             useCORS: true,
@@ -96,7 +125,6 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             windowHeight: scrollHeight
           });
 
-          // Restore original height
           containerRef.current.style.height = originalHeight;
 
           const dataUrl = canvas.toDataURL("image/png");
@@ -117,7 +145,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
           console.error("Error capturing or analyzing screenshot:", error);
           toast({ variant: "destructive", title: "Capture Error", description: "Could not capture screen. The website's policy might be blocking it." });
           if (containerRef.current) {
-            containerRef.current.style.height = containerRef.current.style.height; // try to restore
+            containerRef.current.style.height = containerRef.current.style.height;
           }
       } finally {
           setIsLoading(false);
@@ -125,8 +153,13 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   };
 
   return (
-    <div className="w-full h-[80vh] flex flex-col bg-card border rounded-lg shadow-lg relative">
-      {/* Floating Action Button */}
+    <div 
+        ref={viewRef}
+        className={cn(
+            "w-full h-[80vh] flex flex-col bg-card border rounded-lg shadow-lg relative",
+            isFullscreen && "fixed inset-0 z-50 h-screen"
+        )}
+    >
       <div className="absolute bottom-20 end-6 z-20">
          <Button 
             size="lg" 
@@ -158,10 +191,13 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               className="w-full bg-background ps-10"
-              placeholder="https://example.com"
+              placeholder={lang === "ar" ? "ابحث أو أدخل عنوان URL" : "Search or enter URL"}
             />
           </form>
         </div>
+        <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
+          {isFullscreen ? <Minimize /> : <Maximize />}
+        </Button>
       </div>
 
       {/* Main Content Area */}
@@ -176,10 +212,10 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             src={displayUrl}
             className="w-full h-full border-0"
             title="Survey Browser"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
             onLoad={() => setIsIframeLoaded(true)}
             onError={() => {
-                setIsIframeLoaded(true); // Stop loading indicator even on error
+                setIsIframeLoaded(true);
                  toast({
                     variant: "destructive",
                     title: "Load Error",
@@ -190,7 +226,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
       </div>
       
       {/* Footer */}
-      <div className="flex justify-end p-2 border-t rounded-b-lg bg-muted/50 flex-shrink-0">
+      <div className={cn("flex justify-end p-2 border-t rounded-b-lg bg-muted/50 flex-shrink-0", isFullscreen && "hidden")}>
           <Button onClick={onClose} variant="destructive">
             <X className="me-2" />
             {lang === "ar" ? "إغلاق المتصفح" : "Close Browser"}
