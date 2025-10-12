@@ -6,7 +6,7 @@ export const translations = {
     appName: "Global Insights Assistant",
     footer: "All rights reserved.",
     profile: {
-      title: "Global Profile Manager",
+      title: "Manual Assistant Profile",
       description: "Keep your profile updated for the most accurate survey assistance.",
       income: "Annual Income",
       occupation: "Occupation",
@@ -58,12 +58,23 @@ export const translations = {
       imageSizeError: "Image is too large. Maximum size is 4MB.",
       imageReadError: "Could not read image file. Please try another.",
     },
+    browser: {
+      title: "Integrated Survey Browser",
+      description: "The browser is currently in a conceptual phase.",
+      inDevelopment: "The integrated browser functionality is currently under development. Soon, you'll be able to browse and get AI assistance directly on survey websites!",
+      backToProfile: "Back to Profile Setup",
+      profileTitle: "Survey Browser Profile",
+      profileDescription: "This profile will be used by the AI to assist you when browsing survey websites.",
+      readyTitle: "Ready to Browse",
+      readyDescription: "Your browser profile is set up. You can now proceed to the integrated browser.",
+      startBrowsing: "Start Browsing"
+    }
   },
   ar: {
     appName: "مساعد الرؤى العالمي",
     footer: "كل الحقوق محفوظة.",
     profile: {
-      title: "إدارة البروفايل العالمي",
+      title: "ملف المساعد اليدوي",
       description: "حافظ على تحديث ملفك الشخصي للحصول على أدق مساعدة في الاستبيانات.",
       income: "الدخل السنوي",
       occupation: "المهنة",
@@ -115,7 +126,16 @@ export const translations = {
       imageSizeError: "الصورة كبيرة جدًا. الحجم الأقصى 4 ميجابايت.",
       imageReadError: "لا يمكن قراءة ملف الصورة. يرجى محاولة صورة أخرى.",
     },
+    browser: {
+      title: "متصفح الاستبيانات المدمج",
+      description: "المتصفح حاليًا في مرحلة تصورية.",
+      inDevelopment: "وظيفة المتصفح المدمج قيد التطوير حاليًا. قريبًا، ستتمكن من التصفح والحصول على مساعدة الذكاء الاصطناعي مباشرة على مواقع الاستبيانات!",
+      backToProfile: "العودة إلى إعدادات البروفايل",
+      profileTitle: "ملف متصفح الاستبيانات",
+      profileDescription: "سيستخدم الذكاء الاصطناعي هذا الملف لمساعدتك عند تصفح مواقع الاستبيانات.",
+      readyTitle: "جاهز للتصفح",
+      readyDescription: "تم إعداد ملف تعريف المتصفح الخاص بك. يمكنك الآن المتابعة إلى المتصفح المدمج.",
+      startBrowsing: "بدء التصفح"
+    }
   },
 };
-
-    

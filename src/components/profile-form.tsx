@@ -47,9 +47,19 @@ interface ProfileFormProps {
   onSave: (data: ProfileData) => void;
   initialProfile: ProfileData | null;
   lang: Language;
+  storageKey: string;
+  title?: string;
+  description?: string;
 }
 
-export function ProfileForm({ onSave, initialProfile, lang }: ProfileFormProps) {
+export function ProfileForm({ 
+  onSave, 
+  initialProfile, 
+  lang,
+  storageKey,
+  title,
+  description
+}: ProfileFormProps) {
   const [isEditing, setIsEditing] = useState(!initialProfile);
   const [selectedCountry, setSelectedCountry] = useState(
     initialProfile?.country || ""
@@ -118,9 +128,9 @@ export function ProfileForm({ onSave, initialProfile, lang }: ProfileFormProps) 
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserCircle2 className="text-primary" />
-              {t.profile.title}
+              {title || t.profile.title}
             </CardTitle>
-            <CardDescription>{t.profile.description}</CardDescription>
+            <CardDescription>{description || t.profile.description}</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
@@ -402,5 +412,3 @@ export function ProfileForm({ onSave, initialProfile, lang }: ProfileFormProps) 
     </Card>
   );
 }
-
-    
