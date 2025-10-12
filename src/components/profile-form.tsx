@@ -76,10 +76,10 @@ export function ProfileForm({
     employment: z.string().min(1, t.profile.errors.employment),
     ethnicity: z.string().min(1, t.profile.errors.ethnicity),
   });
-
+  
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
+    defaultValues: initialProfile || {
       income: "",
       occupation: "",
       country: "",
@@ -99,9 +99,23 @@ export function ProfileForm({
       setSelectedCountry(initialProfile.country);
       setIsEditing(false);
     } else {
-      setIsEditing(true);
+        // If there's no profile prop, check local storage on client
+        const savedData = localStorage.getItem(storageKey);
+        if (savedData) {
+            try {
+                const parsedData = JSON.parse(savedData);
+                form.reset(parsedData);
+                setSelectedCountry(parsedData.country);
+                setIsEditing(false);
+            } catch (e) {
+                // If parsing fails, start fresh
+                setIsEditing(true);
+            }
+        } else {
+            setIsEditing(true);
+        }
     }
-  }, [initialProfile, form]);
+  }, [initialProfile, form, storageKey]);
 
   const onSubmit = (data: z.infer<typeof profileSchema>) => {
     onSave(data);
@@ -172,7 +186,7 @@ export function ProfileForm({
                   <FormLabel>{t.profile.country}</FormLabel>
                   <Select
                     onValueChange={handleCountryChange}
-                    defaultValue={field.value}
+                    value={field.value}
                     disabled={!isEditing}
                     dir={lang === "ar" ? "rtl" : "ltr"}
                   >
@@ -231,7 +245,7 @@ export function ProfileForm({
                   <FormLabel>{t.profile.gender}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                     disabled={!isEditing}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
@@ -273,7 +287,7 @@ export function ProfileForm({
                   <FormLabel>{t.profile.maritalStatus}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                     disabled={!isEditing}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
@@ -302,7 +316,7 @@ export function ProfileForm({
                   <FormLabel>{t.profile.education}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                     disabled={!isEditing}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
@@ -331,7 +345,7 @@ export function ProfileForm({
                   <FormLabel>{t.profile.employment}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                     disabled={!isEditing}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
@@ -360,7 +374,7 @@ export function ProfileForm({
                   <FormLabel>{t.profile.ethnicity}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                     disabled={!isEditing}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
@@ -390,14 +404,25 @@ export function ProfileForm({
                 {t.profile.edit}
               </Button>
             )}
-            {isEditing && initialProfile && (
+            {isEditing && form.formState.isDirty && (
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  form.reset(initialProfile);
-                  setSelectedCountry(initialProfile.country);
-                  setIsEditing(false);
+                  const savedData = localStorage.getItem(storageKey);
+                  if (savedData) {
+                    try {
+                      const parsedData = JSON.parse(savedData);
+                      form.reset(parsedData);
+                      setSelectedCountry(parsedData.country);
+                      setIsEditing(false);
+                    } catch (e) {
+                       form.reset();
+                       setIsEditing(true);
+                    }
+                  } else {
+                     form.reset();
+                  }
                 }}
               >
                 {t.profile.cancel}
@@ -409,3 +434,5 @@ export function ProfileForm({
     </Card>
   );
 }
+
+    
