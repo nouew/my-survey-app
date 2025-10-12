@@ -24,7 +24,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   const [displayUrl, setDisplayUrl] = useState(url);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { toast } = useToast();
   const t = translations[lang];
@@ -71,12 +71,12 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     }
     
     setDisplayUrl(finalUrl);
-    setIsIframeLoaded(false);
+    setIsIframeLoading(true);
   };
   
   const handleRefresh = () => {
     if (iframeRef.current) {
-        setIsIframeLoaded(false);
+        setIsIframeLoading(true);
         iframeRef.current.src = iframeRef.current.src;
     }
   }
@@ -165,7 +165,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             size="lg" 
             className="rounded-full h-16 w-16 shadow-2xl" 
             onClick={handleAnalyzeClick} 
-            disabled={isLoading || !isIframeLoaded}
+            disabled={isLoading || isIframeLoading}
             aria-label="Analyze Screen"
           >
             {isLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Sparkles className="h-7 w-7" />}
@@ -201,21 +201,21 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
       </div>
 
       {/* Main Content Area */}
-      <div ref={containerRef} className="flex-grow flex items-center justify-center relative overflow-auto">
-         {!isIframeLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+      <div ref={containerRef} className="flex-grow flex items-center justify-center relative overflow-auto bg-muted/20">
+         {isIframeLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary"/>
             </div>
          )}
          <iframe
             ref={iframeRef}
             src={displayUrl}
-            className="w-full h-full border-0"
+            className={cn("w-full h-full border-0", isIframeLoading && "opacity-0")}
             title="Survey Browser"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
-            onLoad={() => setIsIframeLoaded(true)}
+            onLoad={() => setIsIframeLoading(false)}
             onError={() => {
-                setIsIframeLoaded(true);
+                setIsIframeLoading(false);
                  toast({
                     variant: "destructive",
                     title: "Load Error",
