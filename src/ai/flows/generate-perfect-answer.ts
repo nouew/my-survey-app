@@ -105,20 +105,27 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     name: 'generatePerfectAnswerFlow',
     inputSchema: GeneratePerfectAnswerInputSchema,
     outputSchema: GeneratePerfectAnswerOutputSchema,
-    tools: [answerHistoryTool],
   },
   async (input) => {
-     const { history } = await ai.run({
-      prompt: `Check if a similar question has been answered before for user ${input.userId}. Current question: ${input.questionData}`,
-      tools: [answerHistoryTool],
-      model: 'googleai/gemini-2.5-flash',
-    });
+    // 1. Check history using the tool
+    if (input.questionData) {
+      const historyCheck = await ai.run({
+        prompt: `Check if there is a past answer for the question: "${input.questionData}"`,
+        tools: [answerHistoryTool],
+        model: 'googleai/gemini-2.5-flash',
+        input: {
+            userId: input.userId,
+            currentQuestion: input.questionData,
+        }
+      });
 
-    const toolResponse = history[history.length - 1]?.toolRequest?.output;
-    if (toolResponse?.answer) {
+      const toolResponse = historyCheck.history[historyCheck.history.length-1].toolRequest?.output;
+      if (toolResponse?.found && toolResponse.answer) {
         return { answer: `(From History) ${toolResponse.answer}` };
+      }
     }
 
+    // 2. If no history, generate a new answer
     const { output } = await generateAnswerPrompt({
         questionData: input.questionData,
         imageFile: input.imageFile,
@@ -127,7 +134,7 @@ const generatePerfectAnswerFlow = ai.defineFlow(
 
     const newAnswer = output!.answer;
     
-    // Save the new answer to our "database"
+    // 3. Save the new answer to our "database"
     if (input.questionData) {
         if (!userAnswers[input.userId]) {
             userAnswers[input.userId] = [];
