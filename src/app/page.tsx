@@ -7,6 +7,8 @@ import { LanguageToggle } from "@/components/language-toggle";
 import { translations, Language, Direction } from "@/lib/translations";
 import { ProfileData } from "@/lib/data";
 import { Flame } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BrowserAssistant } from "@/components/browser-assistant";
 
 const USER_ID_KEY = "global_insights_user_id";
 const PROFILE_KEY = "global_insights_profile_data";
@@ -74,7 +76,18 @@ export default function Home() {
           initialProfile={profile}
           lang={lang}
         />
-        <Assistant profile={profile} lang={lang} />
+        <Tabs defaultValue="manual" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="manual">Manual Assistant</TabsTrigger>
+            <TabsTrigger value="browser">Browser Assistant</TabsTrigger>
+          </TabsList>
+          <TabsContent value="manual">
+            <Assistant profile={profile} lang={lang} />
+          </TabsContent>
+          <TabsContent value="browser">
+            <BrowserAssistant lang={lang} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <footer className="w-full max-w-4xl mt-12 text-center text-muted-foreground text-sm">
