@@ -24,24 +24,21 @@ const answerHistoryTool = ai.defineTool(
     }),
     outputSchema: z.object({
       found: z.boolean().describe('Whether a similar question was found.'),
-      answer: z.string().optional().describe('The previously given answer.'),
+      previousAnswer: z.string().optional().describe('The previously given answer.'),
     }),
   },
   async ({ userId, currentQuestion }) => {
-    // In a real app, you would implement a similarity search (e.g., using vector embeddings)
-    // against a database of previously answered questions for that user.
-    // For this demo, we'll use a simple exact match for the concept.
-    if (!userAnswers[userId]) {
-      userAnswers[userId] = [];
+    // A real implementation would use vector similarity search.
+    // This is a simplified example for demonstration.
+    if (!userAnswers[userId] || !currentQuestion) {
       return { found: false };
     }
-
-    // A real implementation would use vector similarity search.
-    // This is a simplified example.
+    
+    // Using a simple case-insensitive comparison for similarity.
     const similar = userAnswers[userId].find(qa => qa.question.toLowerCase() === currentQuestion.toLowerCase());
 
     if (similar) {
-      return { found: true, answer: similar.answer };
+      return { found: true, previousAnswer: similar.answer };
     }
     
     return { found: false };
@@ -70,17 +67,18 @@ export async function generatePerfectAnswer(input: GeneratePerfectAnswerInput): 
 
 const generateAnswerPrompt = ai.definePrompt({
   name: 'generateAnswerPrompt',
-  input: {schema: z.object({
-      questionData: z.string().optional(),
-      imageFile: z.string().optional(),
-      userProfile: z.string(),
-  })},
+  tools: [answerHistoryTool],
+  input: {schema: GeneratePerfectAnswerInputSchema},
   output: {schema: GeneratePerfectAnswerOutputSchema},
-  prompt: `You are an AI assistant designed to provide the most accurate and consistent answer to survey questions based on a user's profile.
+  prompt: `You are an AI assistant designed to provide the most accurate and consistent answer to survey questions based on a user's profile and their past answers.
 
-You will receive the survey question, which can be provided as text, an image, or both. Your task is to analyze all the provided information (text and/or image) to understand the question and any multiple-choice options.
+Your primary goal is consistency. Before generating a new answer, you MUST use the 'answerHistoryTool' to check if a similar question has been answered before.
 
-Based on the user's profile, determine the most fitting answer.
+- If the tool finds a previous answer ('found: true'), you MUST use that exact answer. You can optionally mention that it's from history.
+- If the tool does not find a previous answer ('found: false'), you will generate a new, best possible answer based on the user's profile and the question provided.
+
+Analyze the question from the text and/or image.
+Based on the user's profile and the result from the history tool, determine the most fitting answer.
 
 - If it's a multiple-choice question, your answer must be one of the provided options.
 - If it's a text-based/open-ended question, generate a concise and relevant answer.
@@ -96,7 +94,7 @@ Question Text: {{{questionData}}}
 Question Image: {{media url=imageFile}}
 {{/if}}
 
-Generate the perfect answer based on all the information.
+Generate the perfect answer based on all the information and the history check.
 `,
 });
 
@@ -107,34 +105,11 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     outputSchema: GeneratePerfectAnswerOutputSchema,
   },
   async (input) => {
-    // 1. Check history using the tool
-    if (input.questionData) {
-        const historyCheck = await ai.run({
-            prompt: `Based on the user's request, decide if you should use the answer history tool to check for a previous answer to the question: "${input.questionData}". If a similar question was asked before, use the tool. Otherwise, do not use the tool.`,
-            tools: [answerHistoryTool],
-            model: 'googleai/gemini-1.5-flash',
-            input: {
-                userId: input.userId,
-                currentQuestion: input.questionData,
-            }
-        });
-
-        // The tool's output is in the last history message if the LLM decided to call it.
-        const lastMessage = historyCheck.history[historyCheck.history.length-1];
-        if(lastMessage?.toolRequest) {
-            const toolOutput = lastMessage.toolRequest.output;
-
-            if (toolOutput?.found && toolOutput.answer) {
-                return { answer: `(From History) ${toolOutput.answer}` };
-            }
-        }
-    }
-
-    // 2. If no history, generate a new answer
+    
+    // Always run the prompt which will internally use the tool.
     const { output } = await generateAnswerPrompt({
-        questionData: input.questionData,
-        imageFile: input.imageFile,
-        userProfile: input.userProfile
+      ...input,
+      currentQuestion: input.questionData || '', // Pass current question to the tool via the prompt
     });
 
     if (!output) {
@@ -142,12 +117,17 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     }
     const newAnswer = output.answer;
     
-    // 3. Save the new answer to our "database"
-    if (input.questionData) {
+    // Save the new answer to our "database" only if it's not a historical one.
+    // A more robust check would be to see if the tool was used and returned found:true.
+    // For now, we'll check if the answer contains the "(From History)" marker.
+    if (input.questionData && !newAnswer.includes('(From History)')) {
         if (!userAnswers[input.userId]) {
             userAnswers[input.userId] = [];
         }
-        userAnswers[input.userId].push({ question: input.questionData, answer: newAnswer });
+        // Avoid duplicates
+        if (!userAnswers[input.userId].some(qa => qa.question.toLowerCase() === input.questionData!.toLowerCase())) {
+          userAnswers[input.userId].push({ question: input.questionData, answer: newAnswer });
+        }
     }
 
     return { answer: newAnswer };
