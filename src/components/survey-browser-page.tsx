@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ProfileForm } from "@/components/profile-form";
+import { SurveyBrowserView } from "@/components/survey-browser-view";
 import { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
 import { Search, Rocket } from "lucide-react";
@@ -16,6 +17,7 @@ interface SurveyBrowserPageProps {
 
 export function SurveyBrowserPage({ lang }: SurveyBrowserPageProps) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [isBrowsing, setIsBrowsing] = useState(false);
   const t = translations[lang];
 
   useEffect(() => {
@@ -37,8 +39,18 @@ export function SurveyBrowserPage({ lang }: SurveyBrowserPageProps) {
   }, []);
 
   const handleStartBrowsing = () => {
-    window.open("https://duckduckgo.com", "_blank", "noopener,noreferrer");
+    if (profile) {
+      setIsBrowsing(true);
+    }
   };
+  
+  const handleCloseBrowser = () => {
+    setIsBrowsing(false);
+  }
+
+  if (isBrowsing && profile) {
+    return <SurveyBrowserView lang={lang} profile={profile} onClose={handleCloseBrowser} />
+  }
 
   return (
     <div className="w-full space-y-8">

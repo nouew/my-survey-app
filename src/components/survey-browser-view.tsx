@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -10,7 +9,7 @@ import type { ProfileData } from "@/lib/data";
 import { generateAnswerFromScreenshot } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { DuckDuckGoHome } from "@/components/duckduckgo-home";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const USER_ID_KEY = "global_insights_user_id";
 
@@ -60,15 +59,10 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     setLoadError(null);
     let finalUrl = url.trim();
 
-    const isUrl = /^(https?:\/\/)|([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(finalUrl);
+    if (!finalUrl) return;
 
-    if (isUrl) {
-      if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
-        finalUrl = "https://" + finalUrl;
-      }
-    } else {
-      // Use DuckDuckGo for search to avoid iframe blocking issues
-      finalUrl = `https://duckduckgo.com/?q=${encodeURIComponent(finalUrl)}`;
+    if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
+      finalUrl = "https://" + finalUrl;
     }
     
     setUrlInput(finalUrl);
@@ -77,7 +71,6 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   
   const handleUrlSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!urlInput) return;
     navigateTo(urlInput);
   };
   
@@ -157,12 +150,11 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     try {
         if (iframeRef.current?.contentWindow) {
             const iframeUrl = iframeRef.current.contentWindow.location.href;
-            if (iframeUrl && iframeUrl !== 'about:blank' && !iframeUrl.startsWith('https://duckduckgo.com/')) {
+            if (iframeUrl && iframeUrl !== 'about:blank') {
                 setUrlInput(iframeUrl);
             }
         }
     } catch(e) {
-        // Cross-origin error, can't access location, which is fine.
         setLoadError(null);
     }
   };
@@ -192,7 +184,6 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
          </Button>
       </div>
 
-
       {/* Header / Control Bar */}
       <div className="flex items-center p-2 border-b gap-2 bg-muted/50 rounded-t-lg flex-shrink-0">
         <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={!currentUrl}>
@@ -205,7 +196,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               className="w-full bg-background ps-10"
-              placeholder={lang === "ar" ? "ابحث أو أدخل عنوان URL" : "Search or enter a URL"}
+              placeholder={lang === "ar" ? "أدخل عنوان URL للموقع (e.g., attapoll.com)" : "Enter a website URL (e.g., attapoll.com)"}
             />
           </form>
         </div>
@@ -226,7 +217,25 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
         )}
 
         {!currentUrl && !isIframeLoading && !loadError && (
-            <DuckDuckGoHome onSearch={navigateTo} lang={lang} />
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 p-4">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle>{lang === 'ar' ? 'ابدأ التصفح' : 'Start Browsing'}</CardTitle>
+                <CardDescription>{lang === 'ar' ? 'أدخل عنوان URL لموقع استبيان في الشريط أعلاه للبدء.' : 'Enter a survey website URL in the address bar above to begin.'}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleUrlSubmit} className="flex gap-2">
+                  <Input 
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="e.g., prolific.co"
+                  />
+                  <Button type="submit">{lang === 'ar' ? 'اذهب' : 'Go'}</Button>
+                </form>
+                 <p className="text-xs text-muted-foreground mt-4">{lang === 'ar' ? 'ملاحظة: بعض المواقع قد لا تعمل بسبب سياسات الأمان.' : 'Note: Some websites may not work due to their security policies.'}</p>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {loadError && !isIframeLoading && (
@@ -234,7 +243,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
                  <X className="mx-auto h-12 w-12 mb-4"/>
                  <p>{loadError}</p>
                  <Button variant="link" onClick={() => { setLoadError(null); setCurrentUrl(null); setUrlInput('')}}>
-                    {lang === 'ar' ? 'العودة إلى البحث' : 'Back to Search'}
+                    {lang === 'ar' ? 'العودة' : 'Go Back'}
                  </Button>
             </div>
         )}
