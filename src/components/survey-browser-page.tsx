@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ProfileForm } from "@/components/profile-form";
 import { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
-import { Rocket, Search } from "lucide-react";
+import { Search, Rocket } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { SurveyBrowserView } from "@/components/survey-browser-view";
 
 const PROFILE_KEY = "global_insights_profile_data_browser";
 
@@ -26,8 +27,6 @@ export function SurveyBrowserPage({ lang }: SurveyBrowserPageProps) {
       try {
         const parsedProfile = JSON.parse(savedProfile);
         setProfile(parsedProfile);
-        // If profile exists, maybe we want to go straight to browser view
-        // setShowBrowser(true); 
       } catch (error) {
         console.error("Failed to parse browser profile data:", error);
         localStorage.removeItem(PROFILE_KEY);
@@ -41,27 +40,7 @@ export function SurveyBrowserPage({ lang }: SurveyBrowserPageProps) {
   }, []);
 
   if (showBrowser) {
-    return (
-      <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Rocket className="text-primary" />
-          {t.browser.title}
-        </CardTitle>
-        <CardDescription>
-          {t.browser.description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="text-center text-muted-foreground p-8 rounded-lg border-2 border-dashed">
-          <p>{t.browser.inDevelopment}</p>
-        </div>
-         <Button onClick={() => setShowBrowser(false)} variant="outline" className="mt-4">
-            {t.browser.backToProfile}
-        </Button>
-      </CardContent>
-    </Card>
-    )
+    return <SurveyBrowserView lang={lang} profile={profile} onClose={() => setShowBrowser(false)} />;
   }
 
   return (
