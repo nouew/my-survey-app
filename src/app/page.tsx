@@ -30,7 +30,7 @@ export default function Home() {
   
   return (
       <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
-        <header className="w-full max-w-5xl flex justify-between items-center mb-8">
+        <header className="w-full max-w-7xl flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
             <Flame className="w-8 h-8 text-primary" />
             <h1 className="text-2xl md:text-3xl font-bold text-foreground font-headline">
@@ -42,11 +42,11 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="w-full max-w-5xl flex flex-col gap-8">
+        <main className="w-full max-w-7xl">
           <ManualAssistantPage lang={lang} />
         </main>
 
-        <footer className="w-full max-w-5xl mt-12 text-center text-muted-foreground text-sm">
+        <footer className="w-full max-w-7xl mt-12 text-center text-muted-foreground text-sm">
           <p>&copy; {new Date().getFullYear()} Global Insights Assistant. {t.footer}</p>
         </footer>
       </div>
