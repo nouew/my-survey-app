@@ -169,7 +169,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     }
   };
 
-  const handleIframeError = () => {
+  const handleIframeError = (e: React.SyntheticEvent<HTMLIFrameElement, Event>) => {
     setIsIframeLoading(false);
     setLoadError(lang === 'ar' ? 'لا يمكن تحميل هذا الموقع. قد تكون سياسة أمان الموقع تمنع عرضه في إطار.' : 'Could not load this website. The site\'s security policy may be blocking it from being displayed in a frame.');
   };
@@ -244,7 +244,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             <div className="text-center text-destructive p-4">
                  <X className="mx-auto h-12 w-12 mb-4"/>
                  <p>{loadError}</p>
-                 <Button variant="link" onClick={() => { setLoadError(null); setIframeSrc(null); }}>
+                 <Button variant="link" onClick={() => { setLoadError(null); setIframeSrc(null); setUrlInput('https://www.google.com')}}>
                     {lang === 'ar' ? 'حاول مرة أخرى' : 'Try again'}
                  </Button>
             </div>
