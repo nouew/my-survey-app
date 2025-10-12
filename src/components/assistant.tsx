@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Lightbulb, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, Lightbulb, Loader2, AlertCircle, CheckCircle, X } from "lucide-react";
 import { generateAnswerAction } from "@/app/actions";
 import type { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
@@ -31,10 +31,12 @@ export function Assistant({ profile, lang }: AssistantProps) {
   const t = translations[lang];
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem(USER_ID_KEY);
-    if (storedUserId) {
-      setUserId(storedUserId);
+    let storedUserId = localStorage.getItem(USER_ID_KEY);
+    if (!storedUserId) {
+      storedUserId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      localStorage.setItem(USER_ID_KEY, storedUserId);
     }
+    setUserId(storedUserId);
   }, []);
   
   const handleImageFile = useCallback((file: File) => {

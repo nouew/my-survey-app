@@ -48,8 +48,6 @@ interface ProfileFormProps {
   initialProfile: ProfileData | null;
   lang: Language;
   storageKey: string;
-  title?: string;
-  description?: string;
 }
 
 export function ProfileForm({ 
@@ -57,8 +55,6 @@ export function ProfileForm({
   initialProfile, 
   lang,
   storageKey,
-  title,
-  description
 }: ProfileFormProps) {
   const [isEditing, setIsEditing] = useState(!initialProfile);
   const [selectedCountry, setSelectedCountry] = useState(
@@ -128,9 +124,9 @@ export function ProfileForm({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserCircle2 className="text-primary" />
-              {title || t.profile.title}
+              {t.profile.title}
             </CardTitle>
-            <CardDescription>{description || t.profile.description}</CardDescription>
+            <CardDescription>{t.profile.description}</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
