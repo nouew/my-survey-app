@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowLeft, ArrowRight, RefreshCw, X, Globe, Sparkles, Loader2, Maximize, Minimize } from "lucide-react";
+import { RefreshCw, X, Globe, Sparkles, Loader2, Maximize, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { translations, Language } from "@/lib/translations";
@@ -80,9 +80,6 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     if (!urlInput) return;
     navigateTo(urlInput);
   };
-
-  const goBack = () => iframeRef.current?.contentWindow?.history.back();
-  const goForward = () => iframeRef.current?.contentWindow?.history.forward();
   
   const handleRefresh = () => {
     if (iframeRef.current) {
@@ -198,12 +195,6 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       {/* Header / Control Bar */}
       <div className="flex items-center p-2 border-b gap-2 bg-muted/50 rounded-t-lg flex-shrink-0">
-        <Button variant="ghost" size="icon" onClick={goBack} disabled={!currentUrl}>
-          <ArrowLeft />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={goForward} disabled={!currentUrl}>
-          <ArrowRight />
-        </Button>
         <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={!currentUrl}>
           <RefreshCw />
         </Button>
