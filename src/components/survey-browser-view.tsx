@@ -21,7 +21,7 @@ interface SurveyBrowserViewProps {
 }
 
 export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewProps) {
-  const [urlInput, setUrlInput] = useState("https://www.google.com");
+  const [urlInput, setUrlInput] = useState("");
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // For AI analysis
@@ -67,7 +67,8 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
         finalUrl = "https://" + finalUrl;
       }
     } else {
-      finalUrl = `https://www.google.com/search?q=${encodeURIComponent(finalUrl)}`;
+      // Use DuckDuckGo for search to avoid iframe blocking issues
+      finalUrl = `https://duckduckgo.com/?q=${encodeURIComponent(finalUrl)}`;
     }
     
     setUrlInput(finalUrl);
@@ -159,7 +160,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     try {
         if (iframeRef.current?.contentWindow) {
             const iframeUrl = iframeRef.current.contentWindow.location.href;
-            if (iframeUrl && iframeUrl !== 'about:blank' && !iframeUrl.startsWith('https://www.google.com/search')) {
+            if (iframeUrl && iframeUrl !== 'about:blank' && !iframeUrl.startsWith('https://duckduckgo.com/')) {
                 setUrlInput(iframeUrl);
             }
         }
@@ -212,7 +213,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               className="w-full bg-background ps-10"
-              placeholder={lang === "ar" ? "ابحث في جوجل أو أدخل عنوان URL" : "Search Google or enter URL"}
+              placeholder={lang === "ar" ? "ابحث أو أدخل عنوان URL" : "Search or enter a URL"}
             />
           </form>
         </div>
@@ -232,7 +233,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             </div>
         )}
 
-        {!currentUrl && !isIframeLoading && (
+        {!currentUrl && !isIframeLoading && !loadError && (
             <GoogleHome onSearch={navigateTo} lang={lang} />
         )}
 
@@ -240,8 +241,8 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             <div className="text-center text-destructive p-4 z-10">
                  <X className="mx-auto h-12 w-12 mb-4"/>
                  <p>{loadError}</p>
-                 <Button variant="link" onClick={() => { setLoadError(null); setCurrentUrl(null); setUrlInput('https://www.google.com')}}>
-                    {lang === 'ar' ? 'حاول مرة أخرى' : 'Try again'}
+                 <Button variant="link" onClick={() => { setLoadError(null); setCurrentUrl(null); setUrlInput('')}}>
+                    {lang === 'ar' ? 'العودة إلى البحث' : 'Back to Search'}
                  </Button>
             </div>
         )}

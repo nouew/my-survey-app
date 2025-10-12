@@ -23,39 +23,17 @@ export function GoogleHome({ onSearch, lang }: GoogleHomeProps) {
   };
 
   const isArabic = lang === "ar";
-  const googleSearchText = isArabic ? "بحث Google" : "Google Search";
-  const feelingLuckyText = isArabic ? "ضربة حظ" : "I'm Feeling Lucky";
+  const duckDuckGoSearchText = isArabic ? "بحث DuckDuckGo" : "DuckDuckGo Search";
+  const feelingDuckyText = isArabic ? "أشعر بالحظ" : "I'm Feeling Ducky";
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-white p-4">
       <div className="flex flex-col items-center" style={{ marginTop: "-8vh" }}>
-        {/* Google Logo */}
-        <svg
-          className="w-auto h-[92px] mb-7"
-          viewBox="0 0 272 92"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            fill="#4285F4"
-            d="M86.8,78.2c-12.8,0-23.2-10.4-23.2-23.2s10.4-23.2,23.2-23.2c6.2,0,11.7,2.4,15.8,6.3l-6.6,6.4c-2.5-2.4-6-4-9.2-4c-7.8,0-14.1,6.3-14.1,14.1s6.3,14.1,14.1,14.1c9,0,13-6.5,13.5-9.9h-13.5v-8.4h22.6c0.1,1.2,0.2,2.3,0.2,3.6c0,16.2-10.9,27.8-22.8,27.8Z"
-          />
-          <path
-            fill="#34A853"
-            d="M110.1,55c0-15.1,11.8-27.2,26.5-27.2c14.7,0,26.5,12.1,26.5,27.2c0,15.1-11.8,27.2-26.5,27.2C121.9,82.2,110.1,70.1,110.1,55ZM155,55c0-9.4-7.5-16.9-18.4-16.9s-18.4,7.5-18.4,16.9,7.5,16.9,18.4,16.9S155,64.4,155,55Z"
-          />
-          <path
-            fill="#FBBC05"
-            d="M165,55c0-15.1,11.8-27.2,26.5-27.2c14.7,0,26.5,12.1,26.5,27.2c0,15.1-11.8,27.2-26.5,27.2C176.8,82.2,165,70.1,165,55ZM210,55c0-9.4-7.5-16.9-18.4-16.9s-18.4,7.5-18.4,16.9,7.5,16.9,18.4,16.9S210,64.4,210,55Z"
-          />
-          <path
-            fill="#EA4335"
-            d="M220.8,32.2h8.3v45.1h-8.3Z"
-          />
-          <path
-            fill="#4285F4"
-            d="M239.5,41.9h-8.3v35.4h-8.3V41.9h-8.3v-7.7h24.9Z"
-          />
-        </svg>
+        {/* A DuckDuckGo-like Logo */}
+        <div className="flex items-center gap-2 mb-7">
+            <svg xmlns="http://www.w3.org/2000/svg" width="92" height="92" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[60px] w-auto text-gray-700"><path d="M10.61 15.39a2.5 2.5 0 0 1 3.54 0"/><path d="M14.12 11.88a2.5 2.5 0 0 1 0 3.54"/><path d="M11.88 9.88a2.5 2.5 0 0 1 3.54 0"/><path d="M9.88 14.12a2.5 2.5 0 0 1 0-3.54"/><path d="M17.66 7.34a2.5 2.5 0 0 1 0 3.54"/><path d="M7.34 9.34a2.5 2.5 0 0 1 3.54 0"/><path d="M7.34 17.66a2.5 2.5 0 0 1 0-3.54"/><circle cx="12" cy="12" r="10"/></svg>
+            <span className="text-4xl font-bold text-gray-600">DuckDuckGo</span>
+        </div>
 
         {/* Search Bar */}
         <form onSubmit={handleSubmit} className="w-full max-w-[584px] mb-7">
@@ -67,6 +45,7 @@ export function GoogleHome({ onSearch, lang }: GoogleHomeProps) {
               onChange={(e) => setQuery(e.target.value)}
               className="w-full h-12 pl-12 pr-4 rounded-full border border-gray-200 hover:shadow-md focus:shadow-md focus:outline-none"
               dir={isArabic ? "rtl" : "ltr"}
+              placeholder={isArabic ? "ابحث في الويب دون أن يتم تعقبك..." : "Search the web without being tracked..."}
             />
           </div>
         </form>
@@ -79,15 +58,15 @@ export function GoogleHome({ onSearch, lang }: GoogleHomeProps) {
             variant="secondary"
             className="bg-[#f8f9fa] hover:bg-[#f1f3f4] text-[#3c4043]"
           >
-            {googleSearchText}
+            {duckDuckGoSearchText}
           </Button>
           <Button
             type="button"
             variant="secondary"
             className="bg-[#f8f9fa] hover:bg-[#f1f3f4] text-[#3c4043]"
-            onClick={() => onSearch(feelingLuckyText)}
+            onClick={() => onSearch(query)}
           >
-            {feelingLuckyText}
+            {feelingDuckyText}
           </Button>
         </div>
       </div>
