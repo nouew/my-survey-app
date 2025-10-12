@@ -79,7 +79,7 @@ export function AnswerHistory({ history, lang, onClear, onDeleteItem }: AnswerHi
                         <ClipboardCopy className="me-2 h-4 w-4" />
                         {t.history.copy}
                       </Button>
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDeleteItem(index)}>
+                      <Button variant="ghost" size="sm" className="hover:text-destructive" onClick={() => onDeleteItem(index)}>
                         <Trash2 className="me-2 h-4 w-4" />
                         {t.history.deleteQuestion}
                       </Button>
