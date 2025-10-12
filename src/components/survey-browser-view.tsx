@@ -21,12 +21,14 @@ interface SurveyBrowserViewProps {
 }
 
 export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewProps) {
-  const [url, setUrl] = useState("https://www.google.com/search?q=survey+websites");
-  const [displayUrl, setDisplayUrl] = useState<string | null>("https://www.google.com/search?q=survey+websites");
+  const [url, setUrl] = useState("https://www.google.com");
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isIframeLoading, setIsIframeLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // For AI analysis
+  const [isIframeLoading, setIsIframeLoading] = useState(false); // For page loads
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const { toast } = useToast();
   const t = translations[lang];
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -60,6 +62,8 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
     let finalUrl = url.trim();
     if (!finalUrl) return;
 
+    setLoadError(null);
+
     const isUrl = /^(https?:\/\/)|([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(finalUrl);
 
     if (isUrl) {
@@ -77,6 +81,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
   const handleRefresh = () => {
     if (iframeRef.current) {
         setIsIframeLoading(true);
+        setLoadError(null);
         iframeRef.current.src = iframeRef.current.src;
     }
   }
@@ -112,22 +117,12 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       setIsLoading(true);
       try {
-          // Temporarily expand the container to capture the full page content
-          const originalHeight = containerRef.current.style.height;
-          const scrollHeight = iframeRef.current.contentWindow.document.body.scrollHeight;
-          containerRef.current.style.height = `${scrollHeight}px`;
-          
-          await new Promise(resolve => setTimeout(resolve, 50)); // Allow repaint
-
           const canvas = await html2canvas(iframeRef.current.contentWindow.document.body, {
             useCORS: true,
             allowTaint: true,
-            height: scrollHeight,
-            windowHeight: scrollHeight
+            height: iframeRef.current.contentWindow.document.body.scrollHeight,
+            windowHeight: iframeRef.current.contentWindow.document.body.scrollHeight
           });
-
-          // Restore container height
-          containerRef.current.style.height = originalHeight;
 
           const dataUrl = canvas.toDataURL("image/png");
           
@@ -146,13 +141,18 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
       } catch (error) {
           console.error("Error capturing or analyzing screenshot:", error);
           toast({ variant: "destructive", title: "Capture Error", description: "Could not capture screen. The website's policy might be blocking it." });
-          // Ensure height is restored even on error
-          if (containerRef.current) {
-            containerRef.current.style.height = containerRef.current.style.height;
-          }
       } finally {
           setIsLoading(false);
       }
+  };
+  
+  const handleIframeLoad = () => {
+    setIsIframeLoading(false);
+  };
+
+  const handleIframeError = () => {
+    setIsIframeLoading(false);
+    setLoadError(lang === 'ar' ? 'لا يمكن تحميل هذا الموقع. قد تكون سياسة أمان الموقع تمنع عرضه في إطار.' : 'Could not load this website. The site\'s security policy may be blocking it from being displayed in a frame.');
   };
 
   return (
@@ -168,7 +168,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             size="lg" 
             className="rounded-full h-16 w-16 shadow-2xl" 
             onClick={handleAnalyzeClick} 
-            disabled={isLoading || isIframeLoading || !displayUrl}
+            disabled={isLoading || isIframeLoading || !displayUrl || loadError}
             aria-label="Analyze Screen"
           >
             {isLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Sparkles className="h-7 w-7" />}
@@ -184,7 +184,7 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
         <Button variant="ghost" size="icon" onClick={() => iframeRef.current?.contentWindow?.history.forward()}>
           <ArrowRight />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleRefresh}>
+        <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={!displayUrl}>
           <RefreshCw />
         </Button>
         <div className="relative flex-grow">
@@ -205,16 +205,23 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
 
       {/* Main Content Area */}
       <div ref={containerRef} className="flex-grow flex items-center justify-center relative overflow-auto bg-muted/20">
-         {(isIframeLoading || !displayUrl) && (
+         {isIframeLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary"/>
             </div>
          )}
          
-         {!displayUrl && (
+         {!displayUrl && !isIframeLoading && (
             <div className="text-center text-muted-foreground p-4">
                 <Globe className="mx-auto h-12 w-12 mb-4"/>
                 <p>{lang === 'ar' ? 'اكتب في الشريط أعلاه للبحث في جوجل أو إدخال رابط موقع' : 'Type in the bar above to search Google or enter a website URL'}</p>
+            </div>
+         )}
+         
+         {loadError && !isIframeLoading && (
+            <div className="text-center text-destructive p-4">
+                 <X className="mx-auto h-12 w-12 mb-4"/>
+                 <p>{loadError}</p>
             </div>
          )}
 
@@ -222,18 +229,11 @@ export function SurveyBrowserView({ lang, profile, onClose }: SurveyBrowserViewP
             <iframe
                 ref={iframeRef}
                 src={displayUrl}
-                className={cn("w-full h-full border-0", (isIframeLoading || !displayUrl) && "opacity-0")}
+                className={cn("w-full h-full border-0", (isIframeLoading || loadError) && "opacity-0")}
                 title="Survey Browser"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
-                onLoad={() => setIsIframeLoading(false)}
-                onError={() => {
-                    setIsIframeLoading(false);
-                    toast({
-                        variant: "destructive",
-                        title: "Load Error",
-                        description: "Could not load the website. It might be blocking embedded browsers.",
-                    });
-                }}
+                onLoad={handleIframeLoad}
+                onError={handleIframeError}
             />
          )}
       </div>
