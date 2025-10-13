@@ -53,13 +53,13 @@ interface ProfileFormProps {
 
 export function ProfileForm({ 
   onSave, 
-  initialProfile, 
+  initialProfile: initialProfileFromParent, 
   lang,
   storageKey,
 }: ProfileFormProps) {
-  const [isEditing, setIsEditing] = useState(!initialProfile);
+  const [isEditing, setIsEditing] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState(
-    initialProfile?.country || ""
+    initialProfileFromParent?.country || ""
   );
   const { toast } = useToast();
   const t = translations[lang];
@@ -79,7 +79,7 @@ export function ProfileForm({
   
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    defaultValues: initialProfile || {
+    defaultValues: initialProfileFromParent || {
       income: "",
       occupation: "",
       country: "",
@@ -94,30 +94,22 @@ export function ProfileForm({
   });
 
   useEffect(() => {
-    // This effect runs when `initialProfile` changes or on initial load.
-    const savedData = localStorage.getItem(storageKey);
-    let profileToLoad: ProfileData | null = null;
-    
-    if (initialProfile) {
-        profileToLoad = initialProfile;
-    } else if (savedData) {
-        try {
-            profileToLoad = JSON.parse(savedData);
-        } catch (e) {
-            console.error("Failed to parse profile from storage");
-        }
-    }
-    
-    if (profileToLoad) {
-        form.reset(profileToLoad);
-        setSelectedCountry(profileToLoad.country);
-        onSave(profileToLoad); // Ensure parent has the latest data from storage
-        setIsEditing(false); // If there's data, start in non-edit mode.
+    const savedDataString = localStorage.getItem(storageKey);
+    if (savedDataString) {
+      try {
+        const savedData = JSON.parse(savedDataString);
+        form.reset(savedData);
+        setSelectedCountry(savedData.country);
+        onSave(savedData);
+        setIsEditing(false);
+      } catch (e) {
+        console.error("Failed to parse profile from storage");
+        setIsEditing(true);
+      }
     } else {
-        setIsEditing(true); // No data, start in edit mode to force user input.
+        setIsEditing(true);
     }
-  }, [initialProfile, storageKey, form, onSave]);
-
+  }, [storageKey, form, onSave]);
 
   const onSubmit = (data: z.infer<typeof profileSchema>) => {
     onSave(data);
@@ -135,12 +127,21 @@ export function ProfileForm({
   };
   
   const handleCancel = () => {
-    // If there was an initial profile, reset to it. Otherwise, stay in edit mode with a blank form.
-    if (initialProfile) {
-        form.reset(initialProfile);
-        setSelectedCountry(initialProfile.country);
-        setIsEditing(false);
+    const savedDataString = localStorage.getItem(storageKey);
+    if (savedDataString) {
+        try {
+            const savedData = JSON.parse(savedDataString);
+            form.reset(savedData);
+            setSelectedCountry(savedData.country);
+        } catch (e) {
+            form.reset();
+        }
     }
+    setIsEditing(false);
+  }
+
+  const handleEdit = () => {
+    setIsEditing(true);
   }
 
   return (
@@ -415,13 +416,13 @@ export function ProfileForm({
                   type="button"
                   variant="ghost"
                   onClick={handleCancel}
-                  disabled={!initialProfile}
+                  disabled={!form.formState.isDirty && !!localStorage.getItem(storageKey)}
                 >
                   {t.profile.cancel}
                 </Button>
               </>
             ) : (
-              <Button type="button" onClick={() => setIsEditing(true)}>
+              <Button type="button" onClick={handleEdit}>
                 {t.profile.edit}
               </Button>
             )}
