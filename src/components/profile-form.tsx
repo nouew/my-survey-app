@@ -94,27 +94,30 @@ export function ProfileForm({
   });
 
   useEffect(() => {
+    // This effect runs when `initialProfile` changes or on initial load.
+    const savedData = localStorage.getItem(storageKey);
+    let profileToLoad: ProfileData | null = null;
+    
     if (initialProfile) {
-      form.reset(initialProfile);
-      setSelectedCountry(initialProfile.country);
-      setIsEditing(false);
-    } else {
-        const savedData = localStorage.getItem(storageKey);
-        if (savedData) {
-            try {
-                const parsedData = JSON.parse(savedData);
-                form.reset(parsedData);
-                setSelectedCountry(parsedData.country);
-                onSave(parsedData); // To lift the state up on initial load from storage
-                setIsEditing(false);
-            } catch (e) {
-                setIsEditing(true);
-            }
-        } else {
-            setIsEditing(true);
+        profileToLoad = initialProfile;
+    } else if (savedData) {
+        try {
+            profileToLoad = JSON.parse(savedData);
+        } catch (e) {
+            console.error("Failed to parse profile from storage");
         }
     }
-  }, [initialProfile, form, storageKey, onSave]);
+    
+    if (profileToLoad) {
+        form.reset(profileToLoad);
+        setSelectedCountry(profileToLoad.country);
+        onSave(profileToLoad); // Ensure parent has the latest data from storage
+        setIsEditing(false); // If there's data, start in non-edit mode.
+    } else {
+        setIsEditing(true); // No data, start in edit mode to force user input.
+    }
+  }, [initialProfile, storageKey, form, onSave]);
+
 
   const onSubmit = (data: z.infer<typeof profileSchema>) => {
     onSave(data);
@@ -132,11 +135,12 @@ export function ProfileForm({
   };
   
   const handleCancel = () => {
+    // If there was an initial profile, reset to it. Otherwise, stay in edit mode with a blank form.
     if (initialProfile) {
         form.reset(initialProfile);
         setSelectedCountry(initialProfile.country);
+        setIsEditing(false);
     }
-    setIsEditing(false);
   }
 
   return (
