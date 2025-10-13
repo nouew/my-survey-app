@@ -404,26 +404,18 @@ export function ProfileForm({
                 {t.profile.edit}
               </Button>
             )}
-            {isEditing && form.formState.isDirty && (
+            {isEditing && (
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  const savedData = localStorage.getItem(storageKey);
-                  if (savedData) {
-                    try {
-                      const parsedData = JSON.parse(savedData);
-                      form.reset(parsedData);
-                      setSelectedCountry(parsedData.country);
-                      setIsEditing(false);
-                    } catch (e) {
-                       form.reset();
-                       setIsEditing(true);
-                    }
-                  } else {
-                     form.reset();
+                  if(initialProfile) {
+                    form.reset(initialProfile);
+                    setSelectedCountry(initialProfile.country);
                   }
+                  setIsEditing(false);
                 }}
+                disabled={!initialProfile}
               >
                 {t.profile.cancel}
               </Button>
@@ -434,3 +426,5 @@ export function ProfileForm({
     </Card>
   );
 }
+
+    
