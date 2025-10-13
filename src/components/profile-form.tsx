@@ -53,14 +53,11 @@ interface ProfileFormProps {
 
 export function ProfileForm({ 
   onSave, 
-  initialProfile: initialProfileFromParent, 
   lang,
   storageKey,
 }: ProfileFormProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState(
-    initialProfileFromParent?.country || ""
-  );
+  const [selectedCountry, setSelectedCountry] = useState("");
   const { toast } = useToast();
   const t = translations[lang];
 
@@ -79,7 +76,7 @@ export function ProfileForm({
   
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    defaultValues: initialProfileFromParent || {
+    defaultValues: {
       income: "",
       occupation: "",
       country: "",
@@ -93,26 +90,28 @@ export function ProfileForm({
     },
   });
 
+  // Effect to load data from localStorage ONLY on component mount
   useEffect(() => {
     const savedDataString = localStorage.getItem(storageKey);
     if (savedDataString) {
       try {
         const savedData = JSON.parse(savedDataString);
         form.reset(savedData);
-        setSelectedCountry(savedData.country);
-        onSave(savedData);
-        setIsEditing(false); // Start in non-edit mode if data exists
+        onSave(savedData); // Inform parent component of loaded data without toast
+        setSelectedCountry(savedData.country || "");
+        setIsEditing(false); // Start in non-editing mode
       } catch (e) {
-        console.error("Failed to parse profile from storage");
-        setIsEditing(true); // Start in edit mode if parsing fails
+        console.error("Failed to parse profile from storage", e);
+        setIsEditing(true); // If parsing fails, start in editing mode
       }
     } else {
-        setIsEditing(true); // Start in edit mode if no data exists
+      setIsEditing(true); // If no data, start in editing mode
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey, form, onSave]);
 
   const onSubmit = (data: z.infer<typeof profileSchema>) => {
-    onSave(data);
+    onSave(data); // This now only gets called on form submission
     setIsEditing(false);
     toast({
       title: t.profile.toast.title,
@@ -132,7 +131,7 @@ export function ProfileForm({
         try {
             const savedData = JSON.parse(savedDataString);
             form.reset(savedData);
-            setSelectedCountry(savedData.country);
+            setSelectedCountry(savedData.country || "");
         } catch (e) {
             form.reset();
         }
@@ -156,6 +155,7 @@ export function ProfileForm({
             <CardDescription>{t.profile.description}</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* All FormField components are the same, just with the disabled prop bound to !isEditing */}
             <FormField
               control={form.control}
               name="income"
@@ -416,7 +416,6 @@ export function ProfileForm({
                   type="button"
                   variant="ghost"
                   onClick={handleCancel}
-                  disabled={!form.formState.isDirty && !!localStorage.getItem(storageKey)}
                 >
                   {t.profile.cancel}
                 </Button>
