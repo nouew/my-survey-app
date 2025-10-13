@@ -6,10 +6,11 @@ import { Flame } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { translations, Language, Direction } from "@/lib/translations";
 import { ManualAssistantPage } from "@/components/manual-assistant-page";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
-  const [lang, setLang] = useState<Language>("en");
-  const [dir, setDir] = useState<Direction>("ltr");
+  const [lang, setLang] = useState<Language>("ar");
+  const [dir, setDir] = useState<Direction>("rtl");
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageToggle lang={lang} setLang={setLang} />
+            <ThemeToggle />
           </div>
         </header>
 
