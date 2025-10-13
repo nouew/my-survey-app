@@ -97,7 +97,6 @@ export function ProfileForm({
       try {
         const savedData = JSON.parse(savedDataString);
         form.reset(savedData);
-        onSave(savedData); // Inform parent component of loaded data without toast
         setSelectedCountry(savedData.country || "");
         setIsEditing(false); // Start in non-editing mode
       } catch (e) {
@@ -108,10 +107,20 @@ export function ProfileForm({
       setIsEditing(true); // If no data, start in editing mode
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey, form, onSave]);
+  }, [storageKey]);
+  
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+        if(value.country) {
+            setSelectedCountry(value.country);
+        }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
 
   const onSubmit = (data: z.infer<typeof profileSchema>) => {
-    onSave(data); // This now only gets called on form submission
+    onSave(data);
     setIsEditing(false);
     toast({
       title: t.profile.toast.title,
@@ -126,16 +135,7 @@ export function ProfileForm({
   };
   
   const handleCancel = () => {
-    const savedDataString = localStorage.getItem(storageKey);
-    if (savedDataString) {
-        try {
-            const savedData = JSON.parse(savedDataString);
-            form.reset(savedData);
-            setSelectedCountry(savedData.country || "");
-        } catch (e) {
-            form.reset();
-        }
-    }
+    form.reset(); // Reset to the last committed form state (from last successful load or submit)
     setIsEditing(false);
   }
 
