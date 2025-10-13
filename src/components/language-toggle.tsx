@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,13 @@ interface LanguageToggleProps {
 
 export function LanguageToggle({ lang, setLang }: LanguageToggleProps) {
   const toggleLanguage = () => {
-    setLang(lang === "en" ? "ar" : "en");
+    const newLang = lang === "en" ? "ar" : "en";
+    setLang(newLang);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("global_insights_lang", newLang);
+      document.documentElement.lang = newLang;
+      document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
+    }
   };
 
   return (

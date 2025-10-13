@@ -72,6 +72,13 @@ export const translations = {
       copied: "Answer Copied!",
       deleteQuestion: "Delete Question",
     },
+    sites: {
+        title: "Survey Sites",
+        description: "A list of popular survey sites.",
+        name: "Site Name",
+        minPayout: "Min. Payout",
+        notes: "Notes"
+    }
   },
   ar: {
     appName: "مساعد الرؤى العالمي",
@@ -142,5 +149,12 @@ export const translations = {
       copied: "تم نسخ الإجابة!",
       deleteQuestion: "حذف السؤال",
     },
+    sites: {
+        title: "مواقع الاستبيانات",
+        description: "قائمة بمواقع الاستبيانات الشهيرة.",
+        name: "اسم الموقع",
+        minPayout: "الحد الأدنى للدفع",
+        notes: "ملاحظات"
+    }
   },
 };

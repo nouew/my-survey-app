@@ -2,11 +2,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Flame } from "lucide-react";
+import { Flame, BookMarked } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { translations, Language, Direction } from "@/lib/translations";
 import { ManualAssistantPage } from "@/components/manual-assistant-page";
 import { ThemeToggle } from "@/components/theme-toggle";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const [lang, setLang] = useState<Language>("ar");
@@ -40,6 +42,11 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/sites">
+                <Button variant="ghost" size="icon" aria-label={t.sites.title}>
+                    <BookMarked className="h-5 w-5" />
+                </Button>
+            </Link>
             <LanguageToggle lang={lang} setLang={setLang} />
             <ThemeToggle />
           </div>

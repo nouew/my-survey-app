@@ -1,13 +1,16 @@
+
+'use client'
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 
-export const metadata: Metadata = {
-  title: 'Global Insights Assistant',
-  description: 'AI-powered assistant for perfect survey consistency.',
-};
+// This is a client component now, so metadata should be exported from a server component if needed, or set in page.tsx/layout.tsx of a server component tree.
+// export const metadata: Metadata = {
+//   title: 'Global Insights Assistant',
+//   description: 'AI-powered assistant for perfect survey consistency.',
+// };
 
 export default function RootLayout({
   children,
@@ -17,6 +20,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+         <title>Global Insights Assistant</title>
+        <meta name="description" content="AI-powered assistant for perfect survey consistency." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
