@@ -19,10 +19,25 @@ export default function Home() {
     setIsClient(true);
 
     if (typeof window !== "undefined") {
+      // On initial load, check local storage for saved language
+      const storedLang = (localStorage.getItem("global_insights_lang") as Language) || "ar";
+      setLang(storedLang);
+      
+      const newDir = storedLang === "ar" ? "rtl" : "ltr";
+      document.documentElement.lang = storedLang;
+      document.documentElement.dir = newDir;
+      setDir(newDir);
+    }
+  }, []);
+
+  useEffect(() => {
+    // This effect runs when `lang` changes
+    if (typeof window !== "undefined") {
       const newDir = lang === "ar" ? "rtl" : "ltr";
       document.documentElement.lang = lang;
       document.documentElement.dir = newDir;
       setDir(newDir);
+      localStorage.setItem("global_insights_lang", lang);
     }
   }, [lang]);
 
