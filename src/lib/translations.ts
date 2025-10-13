@@ -78,6 +78,10 @@ export const translations = {
         name: "Site",
         proxyType: "Recommended Proxy Type",
         profileNotes: "Required Profile Data"
+    },
+    course: {
+        title: "The Leadership Course",
+        description: "A comprehensive course on professionally and strategically profiting from surveys."
     }
   },
   ar: {
@@ -155,6 +159,10 @@ export const translations = {
         name: "الموقع",
         proxyType: "نوع البروكسي الأنسب",
         profileNotes: "بيانات البروفايل المطلوبة"
+    },
+    course: {
+        title: "كورس القيادة المتكامل",
+        description: "كورس شامل للربح من الاستبيانات بشكل احترافي واستراتيجي."
     }
   },
 };

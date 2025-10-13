@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Flame, BookMarked } from "lucide-react";
+import { Flame, BookMarked, BookOpen } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { translations, Language, Direction } from "@/lib/translations";
 import { ManualAssistantPage } from "@/components/manual-assistant-page";
@@ -42,6 +42,11 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/course">
+                <Button variant="ghost" size="icon" aria-label={t.course.title}>
+                    <BookOpen className="h-5 w-5" />
+                </Button>
+            </Link>
             <Link href="/sites">
                 <Button variant="ghost" size="icon" aria-label={t.sites.title}>
                     <BookMarked className="h-5 w-5" />
