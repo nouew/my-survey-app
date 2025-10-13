@@ -101,13 +101,13 @@ export function ProfileForm({
         form.reset(savedData);
         setSelectedCountry(savedData.country);
         onSave(savedData);
-        setIsEditing(false);
+        setIsEditing(false); // Start in non-edit mode if data exists
       } catch (e) {
         console.error("Failed to parse profile from storage");
-        setIsEditing(true);
+        setIsEditing(true); // Start in edit mode if parsing fails
       }
     } else {
-        setIsEditing(true);
+        setIsEditing(true); // Start in edit mode if no data exists
     }
   }, [storageKey, form, onSave]);
 
