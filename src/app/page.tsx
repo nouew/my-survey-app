@@ -35,13 +35,13 @@ export default function Home() {
   return (
       <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
         <header className="w-full max-w-7xl flex justify-between items-center mb-8">
-          <div className="flex items-center gap-3">
-            <Flame className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground font-headline">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground font-headline">
               {t.appName}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Link href="/course">
                 <Button variant="ghost" size="icon" aria-label={t.course.title}>
                     <BookOpen className="h-5 w-5" />

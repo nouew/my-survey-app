@@ -9,9 +9,6 @@ import { courseStages } from "@/lib/course-data";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Accordion,
@@ -55,9 +52,9 @@ export default function CoursePage() {
   return (
     <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-6 md:p-8" dir={dir}>
       <header className="w-full max-w-7xl flex justify-between items-center mb-8">
-        <div className="flex items-center gap-3">
-          <Flame className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground font-headline">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground font-headline">
             {t.course.title}
           </h1>
         </div>
@@ -70,19 +67,19 @@ export default function CoursePage() {
       </header>
 
       <main className="w-full max-w-7xl space-y-6">
-        <p className="text-muted-foreground">{t.course.description}</p>
+        <p className="text-muted-foreground text-center sm:text-start">{t.course.description}</p>
         
         <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="stage-1">
           {courseStages.map((stage) => (
             <AccordionItem value={stage.id} key={stage.id} className="border rounded-lg bg-card">
-              <AccordionTrigger className="p-6 text-lg font-semibold hover:no-underline">
+              <AccordionTrigger className="p-4 sm:p-6 text-base sm:text-lg font-semibold hover:no-underline text-start">
                 {stage.title}
               </AccordionTrigger>
-              <AccordionContent className="p-6 pt-0">
+              <AccordionContent className="p-4 sm:p-6 pt-0">
                 <p className="text-muted-foreground mb-6">{stage.description}</p>
                 {stage.sections.map((section, index) => (
                     <div key={index} className="mb-8">
-                        <h3 className="text-xl font-bold mb-3 text-primary">{section.title}</h3>
+                        <h3 className="text-lg sm:text-xl font-bold mb-3 text-primary">{section.title}</h3>
                         <p className="text-muted-foreground mb-4 whitespace-pre-line">{section.content}</p>
 
                         {section.table && (
@@ -93,7 +90,7 @@ export default function CoursePage() {
                                             <TableHeader>
                                                 <TableRow>
                                                 {section.table.headers.map((header, hIndex) => (
-                                                    <TableHead key={hIndex}>{header}</TableHead>
+                                                    <TableHead key={hIndex} className="min-w-[150px]">{header}</TableHead>
                                                 ))}
                                                 </TableRow>
                                             </TableHeader>

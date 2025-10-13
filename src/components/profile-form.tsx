@@ -143,7 +143,7 @@ export function ProfileForm({
             </CardTitle>
             <CardDescription>{t.profile.description}</CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="income"
@@ -396,7 +396,7 @@ export function ProfileForm({
               )}
             />
           </CardContent>
-          <CardFooter className="flex gap-2">
+          <CardFooter className="flex flex-col sm:flex-row gap-2">
             {isEditing ? (
               <Button type="submit">{t.profile.save}</Button>
             ) : (
@@ -434,5 +434,3 @@ export function ProfileForm({
     </Card>
   );
 }
-
-    
