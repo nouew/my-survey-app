@@ -99,23 +99,22 @@ export function ProfileForm({
       setSelectedCountry(initialProfile.country);
       setIsEditing(false);
     } else {
-        // If there's no profile prop, check local storage on client
         const savedData = localStorage.getItem(storageKey);
         if (savedData) {
             try {
                 const parsedData = JSON.parse(savedData);
                 form.reset(parsedData);
                 setSelectedCountry(parsedData.country);
+                onSave(parsedData); // To lift the state up on initial load from storage
                 setIsEditing(false);
             } catch (e) {
-                // If parsing fails, start fresh
                 setIsEditing(true);
             }
         } else {
             setIsEditing(true);
         }
     }
-  }, [initialProfile, form, storageKey]);
+  }, [initialProfile, form, storageKey, onSave]);
 
   const onSubmit = (data: z.infer<typeof profileSchema>) => {
     onSave(data);
@@ -129,8 +128,16 @@ export function ProfileForm({
   const handleCountryChange = (countryValue: string) => {
     setSelectedCountry(countryValue);
     form.setValue("country", countryValue);
-    form.setValue("state", ""); // Reset state when country changes
+    form.setValue("state", "");
   };
+  
+  const handleCancel = () => {
+    if (initialProfile) {
+        form.reset(initialProfile);
+        setSelectedCountry(initialProfile.country);
+    }
+    setIsEditing(false);
+  }
 
   return (
     <Card>
@@ -398,26 +405,20 @@ export function ProfileForm({
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row gap-2">
             {isEditing ? (
-              <Button type="submit">{t.profile.save}</Button>
+              <>
+                <Button type="submit">{t.profile.save}</Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleCancel}
+                  disabled={!initialProfile}
+                >
+                  {t.profile.cancel}
+                </Button>
+              </>
             ) : (
               <Button type="button" onClick={() => setIsEditing(true)}>
                 {t.profile.edit}
-              </Button>
-            )}
-            {isEditing && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  if(initialProfile) {
-                    form.reset(initialProfile);
-                    setSelectedCountry(initialProfile.country);
-                  }
-                  setIsEditing(false);
-                }}
-                disabled={!initialProfile}
-              >
-                {t.profile.cancel}
               </Button>
             )}
           </CardFooter>
