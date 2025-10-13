@@ -73,11 +73,11 @@ export const translations = {
       deleteQuestion: "Delete Question",
     },
     sites: {
-        title: "Survey Sites",
-        description: "A list of popular survey sites.",
-        name: "Site Name",
-        minPayout: "Min. Payout",
-        notes: "Notes"
+        title: "Survey Sites Analysis",
+        description: "Security and proxy requirements analysis for survey platforms.",
+        name: "Site",
+        proxyType: "Recommended Proxy Type",
+        profileNotes: "Required Profile Data"
     }
   },
   ar: {
@@ -150,11 +150,11 @@ export const translations = {
       deleteQuestion: "حذف السؤال",
     },
     sites: {
-        title: "مواقع الاستبيانات",
-        description: "قائمة بمواقع الاستبيانات الشهيرة.",
-        name: "اسم الموقع",
-        minPayout: "الحد الأدنى للدفع",
-        notes: "ملاحظات"
+        title: "تحليل مواقع الاستبيانات",
+        description: "تحليل متطلبات الأمان والبروكسي لمنصات الاستبيانات.",
+        name: "الموقع",
+        proxyType: "نوع البروكسي الأنسب",
+        profileNotes: "بيانات البروفايل المطلوبة"
     }
   },
 };

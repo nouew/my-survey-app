@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Link from 'next/link';
 import { ArrowLeft, Flame } from "lucide-react";
 import { translations, Language, Direction } from "@/lib/translations";
-import { surveySites } from "@/lib/sites-data";
+import { sitesByCategory } from "@/lib/sites-data";
 import {
   Card,
   CardContent,
@@ -48,7 +48,7 @@ export default function SitesPage() {
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-6 md:p-8" dir={dir}>
-      <header className="w-full max-w-4xl flex justify-between items-center mb-8">
+      <header className="w-full max-w-7xl flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <Flame className="w-8 h-8 text-primary" />
           <h1 className="text-2xl md:text-3xl font-bold text-foreground font-headline">
@@ -63,36 +63,39 @@ export default function SitesPage() {
         </Link>
       </header>
 
-      <main className="w-full max-w-4xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t.sites.title}</CardTitle>
-            <CardDescription>{t.sites.description}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t.sites.name}</TableHead>
-                  <TableHead className="text-center">{t.sites.minPayout}</TableHead>
-                  <TableHead>{t.sites.notes}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {surveySites.map((site) => (
-                  <TableRow key={site.name}>
-                    <TableCell className="font-medium">{site.name}</TableCell>
-                    <TableCell className="text-center">{site.minPayout}</TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+      <main className="w-full max-w-7xl space-y-8">
+        {sitesByCategory.map((categoryData) => (
+          <Card key={categoryData.category}>
+            <CardHeader>
+              <CardTitle>{categoryData.category}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[150px]">{t.sites.name}</TableHead>
+                      <TableHead className="min-w-[250px]">{t.sites.proxyType}</TableHead>
+                      <TableHead>{t.sites.profileNotes}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {categoryData.sites.map((site) => (
+                      <TableRow key={site.name}>
+                        <TableCell className="font-medium">{site.name}</TableCell>
+                        <TableCell>{site.proxyType}</TableCell>
+                        <TableCell>{site.profileNotes}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </main>
 
-      <footer className="w-full max-w-4xl mt-12 text-center text-muted-foreground text-sm">
+      <footer className="w-full max-w-7xl mt-12 text-center text-muted-foreground text-sm">
         <p>&copy; {new Date().getFullYear()} Global Insights Assistant. {t.footer}</p>
       </footer>
     </div>
