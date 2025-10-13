@@ -4,7 +4,7 @@ export type Direction = "ltr" | "rtl";
 
 export const translations = {
   en: {
-    appName: "Global Insights Assistant",
+    appName: "Global Survey Assistant",
     footer: "All rights reserved.",
     profile: {
       title: "Assistant Profile",
@@ -85,7 +85,7 @@ export const translations = {
     }
   },
   ar: {
-    appName: "مساعد الرؤى العالمي",
+    appName: "مساعد الاستبيانات العالمي",
     footer: "كل الحقوق محفوظة.",
     profile: {
       title: "ملف المساعد",

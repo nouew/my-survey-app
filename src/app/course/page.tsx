@@ -120,7 +120,7 @@ export default function CoursePage() {
       </main>
 
       <footer className="w-full max-w-7xl mt-12 text-center text-muted-foreground text-sm">
-        <p>&copy; {new Date().getFullYear()} Global Insights Assistant. {t.footer}</p>
+        <p>&copy; {new Date().getFullYear()} {t.appName}. {t.footer}</p>
       </footer>
     </div>
   );
