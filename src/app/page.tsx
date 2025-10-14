@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, signOut, type User, type Auth } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { app, db } from "@/lib/firebase";
-import { Flame, BookMarked, BookOpen, LogOut } from "lucide-react";
+import { Flame, BookMarked, BookOpen, LogOut, UserCog } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { translations, Language, Direction } from "@/lib/translations";
 import { ManualAssistantPage } from "@/components/manual-assistant-page";
@@ -15,17 +15,21 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface UserData {
+  status: 'active' | 'inactive';
+  deviceId?: string;
+  isAdmin?: boolean;
+}
+
 async function getDeviceId(): Promise<string> {
-    // This function can only run on the client, so we can safely assume window is available.
     const userAgent = window.navigator.userAgent || 'unknown';
-    // NOTE: IP address is not available on the client. We'll use user-agent as a simplified device ID.
-    // In a real production scenario, a more robust client-side fingerprinting library might be used.
     return userAgent;
 }
 
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Language>("ar");
   const [dir, setDir] = useState<Direction>("rtl");
@@ -34,7 +38,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!app || !db) {
-        setLoading(false); // If firebase is not configured, don't show loading screen
+        setLoading(false);
         return;
     };
     const authInstance = getAuth(app);
@@ -43,26 +47,25 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
       if (user) {
         setUser(user);
-        // Fetch user status and verify device on the client
         try {
           const userDocRef = doc(db, "users", user.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
-            const userData = userDoc.data();
-            if (userData.status === 'inactive') {
+            const data = userDoc.data() as UserData;
+            setUserData(data);
+
+            if (data.status === 'inactive') {
               router.push('/blocked');
               return;
             }
             
-            // Device verification logic now on client
             const currentDeviceId = await getDeviceId();
-            if (userData.status === 'active' && userData.deviceId && userData.deviceId !== currentDeviceId) {
+            if (data.status === 'active' && data.deviceId && data.deviceId !== currentDeviceId) {
               router.push('/blocked?reason=device_mismatch');
               return;
             }
           } else {
-             // This case might happen if document creation fails, direct to blocked.
              router.push('/blocked');
              return;
           }
@@ -71,9 +74,6 @@ export default function Home() {
 
         } catch (error) {
             console.error("Error verifying user status:", error);
-            // If we can't read the doc, it's a permissions issue or user is new.
-            // For a new user, the doc doesn't exist, which is fine, but they start as inactive.
-            // Let's redirect to blocked page as a safe fallback.
              router.push('/blocked');
         }
 
@@ -112,7 +112,7 @@ export default function Home() {
 
   const t = translations[lang];
 
-  if (loading && auth) { // Only show loading if firebase is configured
+  if (loading && auth) {
     return (
        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
          <div className="w-full max-w-7xl space-y-8">
@@ -141,6 +141,13 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
+            {userData?.isAdmin && (
+               <Link href="/admin">
+                <Button variant="ghost" size="icon" aria-label={t.auth.admin.title}>
+                    <UserCog className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
             <Link href="/course">
                 <Button variant="ghost" size="icon" aria-label={t.course.title}>
                     <BookOpen className="h-5 w-5" />
