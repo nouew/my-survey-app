@@ -35,7 +35,7 @@ export async function createUser(username: string, password: string): Promise<Au
     await setDoc(userDocRef, {
       id: username.toLowerCase().trim(),
       uid: user.uid,
-      status: 'inactive' // All users start as inactive
+      status: 'inactive'
     });
 
     return { status: 'pending', message: 'Account created. Awaiting admin activation.' };
@@ -69,34 +69,14 @@ export async function signInUser(username: string, password: string): Promise<Au
             return { status: 'pending', message: 'Your account has not been activated by an administrator.' };
         }
     } else {
-        return { status: 'pending', message: 'Your account record is not found, please contact support.' };
+        return { status: 'error', message: 'User data not found. Please contact support.' };
     }
 
   } catch (error: any) {
     console.error("Error in signInUser:", error.message);
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+    if (error.code === 'auth/invalid-credential') {
       return { status: 'error', message: 'Invalid username or password.' };
     }
     return { status: 'error', message: error.message || 'An unexpected error occurred.' };
   }
-}
-
-// Function to validate the user's session
-export async function validateSession(uid: string): Promise<{ status: 'valid' | 'invalid' }> {
-    if (!uid) {
-        return { status: 'invalid' };
-    }
-    try {
-        const userDocRef = doc(db, 'users', uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists() && userDoc.data().status === 'active') {
-            return { status: 'valid' };
-        } else {
-            return { status: 'invalid' };
-        }
-    } catch (error) {
-        console.error("Session validation error:", error);
-        return { status: 'invalid' };
-    }
 }

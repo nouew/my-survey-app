@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   const publicPaths = ['/login'];
   const isPublicPath = publicPaths.includes(pathname);
 
-  // Allow Next.js internal requests, API routes and static assets to pass through
+  // Allow Next.js internal requests, API routes, and static assets to pass through
   if (pathname.startsWith('/_next') || pathname.startsWith('/api') || /\.(.*)$/.test(pathname)) {
     return NextResponse.next();
   }
@@ -31,6 +31,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // This matcher ensures the middleware runs on all pages except for
+    // specific asset types and Next.js internals.
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif)$).*)',
   ],
 };
