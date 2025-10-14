@@ -2,7 +2,7 @@
 "use server";
 
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, doc, getDoc, setDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, query, where, getDocs } from 'firebase/firestore';
 import { app, db } from '@/lib/firebase-client';
 
 const auth = getAuth(app);
@@ -14,12 +14,12 @@ interface AuthResult {
 }
 
 // Helper to create a dummy email from a username
-const formatEmail = (username: string) => `${username.toLowerCase()}@survey-app.com`;
+const formatEmail = (username: string) => `${username.toLowerCase().trim()}@survey-app.com`;
 
 // Function to create a new user
 export async function createUser(username: string, password: string): Promise<AuthResult> {
   const usersRef = collection(db, 'users');
-  const q = query(usersRef, where("id", "==", username.toLowerCase()));
+  const q = query(usersRef, where("id", "==", username.toLowerCase().trim()));
   
   try {
     const querySnapshot = await getDocs(q);
@@ -33,8 +33,8 @@ export async function createUser(username: string, password: string): Promise<Au
     // Create user document in Firestore
     const userDocRef = doc(db, 'users', user.uid);
     await setDoc(userDocRef, {
-      id: username,
-      email: user.email,
+      id: username.toLowerCase().trim(),
+      uid: user.uid,
       status: 'inactive'
     });
 
@@ -48,7 +48,8 @@ export async function createUser(username: string, password: string): Promise<Au
     if (error.code === 'auth/weak-password') {
       return { status: 'error', message: 'Password should be at least 6 characters.' };
     }
-    return { status: 'error', message: 'An unexpected error occurred.' };
+    // Return the actual Firebase error message
+    return { status: 'error', message: error.message || 'An unexpected error occurred.' };
   }
 }
 
@@ -62,10 +63,9 @@ export async function signInUser(username: string, password: string): Promise<Au
     const userDoc = await getDoc(userDocRef);
 
     if (!userDoc.exists()) {
-      // This is a fallback case, should not happen in normal flow
       await setDoc(userDocRef, {
-        id: username,
-        email: user.email,
+        id: username.toLowerCase().trim(),
+        uid: user.uid,
         status: 'inactive'
       });
        return { status: 'pending', message: 'Your account is pending activation by an administrator.' };
@@ -83,7 +83,8 @@ export async function signInUser(username: string, password: string): Promise<Au
     if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
       return { status: 'error', message: 'Invalid username or password.' };
     }
-    return { status: 'error', message: 'An unexpected error occurred.' };
+    // Return the actual Firebase error message
+    return { status: 'error', message: error.message || 'An unexpected error occurred.' };
   }
 }
 
@@ -102,6 +103,7 @@ export async function validateSession(uid: string): Promise<{ status: 'valid' | 
             return { status: 'invalid' };
         }
     } catch (error) {
+        console.error("Session validation error:", error);
         return { status: 'invalid' };
     }
 }
