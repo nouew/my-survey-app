@@ -23,7 +23,7 @@ async function getDeviceId(): Promise<string> {
     const { headers } = await import('next/headers');
     const userAgent = headers().get('user-agent') || 'unknown';
     const ip = headers().get('x-forwarded-for') || 'unknown-ip';
-    // Simple hash for demonstration. In production, consider a more robust hashing algorithm.
+    // Simple hash for demonstration. In a production, consider a more robust hashing algorithm.
     const deviceId = `${userAgent}-${ip}`; 
     return deviceId;
 }
@@ -45,6 +45,7 @@ export async function createUserRecord(uid: string, email: string | null) {
 
 // Action to get a user's status from Firestore
 export async function getUserStatus(uid: string): Promise<{ status: 'active' | 'inactive' | 'not_found' }> {
+  if (!db) return { status: 'not_found' };
   const userDocRef = doc(db, "users", uid);
   const userDoc = await getDoc(userDocRef);
   
@@ -56,6 +57,7 @@ export async function getUserStatus(uid: string): Promise<{ status: 'active' | '
 
 // Action to verify a device and bind it if necessary
 export async function verifyDevice(uid: string): Promise<{ isVerified: boolean }> {
+    if (!db) return { isVerified: false };
     const userDocRef = doc(db, "users", uid);
     const userDoc = await getDoc(userDocRef);
 
@@ -88,6 +90,7 @@ export async function verifyDevice(uid: string): Promise<{ isVerified: boolean }
 
 // Admin actions
 export async function getAllUsers(): Promise<UserRecord[]> {
+  if (!db) return [];
   // In a real app, you would add authentication to ensure only an admin can call this.
   const querySnapshot = await getDocs(usersCollection);
   const users: UserRecord[] = [];
@@ -98,6 +101,7 @@ export async function getAllUsers(): Promise<UserRecord[]> {
 }
 
 export async function activateUser(uid: string): Promise<{ success: boolean }> {
+  if (!db) return { success: false };
   // In a real app, you would add authentication to ensure only an admin can call this.
   const userDocRef = doc(db, "users", uid);
   const userDoc = await getDoc(userDocRef);
