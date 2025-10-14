@@ -1,9 +1,9 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
+import { FirebaseProvider } from '@/lib/firebase-client.tsx';
 
 export const metadata: Metadata = {
   title: 'Global Survey Assistant',
@@ -32,10 +32,11 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
+          <FirebaseProvider>
             {children}
             <Toaster />
+          </FirebaseProvider>
         </ThemeProvider>
       </body>
     </html>
   );
-}
