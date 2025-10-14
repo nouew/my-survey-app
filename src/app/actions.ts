@@ -21,18 +21,11 @@ export async function createUserRecord(uid: string, email: string | null) {
     return;
   }
   
-  const usersCollectionRef = collection(db, "users");
-  const userDocRef = doc(usersCollectionRef, uid);
+  const userDocRef = doc(db, "users", uid);
 
-  // Check if this is the first user to make them an admin automatically.
-  // This check is intentionally left without a try/catch. 
-  // If it fails due to security rules (which it will for non-admins), that's expected.
-  // The first user signup will succeed because no rules are being violated yet.
-  const querySnapshot = await getDocs(usersCollectionRef);
-  const isAdmin = querySnapshot.empty;
+  // Hardcode the admin email for reliability.
+  const isAdmin = email === 'hakwa7952@gmail.com';
 
-  // We use setDoc which will either create the doc or overwrite it.
-  // This is safe because our Firestore rules only allow a user to write to their own doc.
   const userData: {
     uid: string;
     email: string | null;
@@ -42,18 +35,15 @@ export async function createUserRecord(uid: string, email: string | null) {
   } = {
     uid,
     email,
-    status: 'inactive',
-    deviceId: null, // Device ID will be bound on first activation by an admin
+    // The admin is active by default. All other users are inactive until an admin activates them.
+    status: isAdmin ? 'active' : 'inactive',
+    deviceId: null, 
   };
 
   if (isAdmin) {
     userData.isAdmin = true;
-    // The first user (admin) should be active by default.
-    userData.status = 'active'; 
   }
   
-  // Use setDoc to create the document. The security rules will allow this
-  // for the user creating their own document.
   await setDoc(userDocRef, userData);
   console.log(`Created/updated Firestore record for user: ${uid}. Admin status: ${isAdmin}`);
 }
