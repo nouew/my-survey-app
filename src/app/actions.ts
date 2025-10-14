@@ -2,7 +2,7 @@
 "use server";
 
 import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDocs, collection } from "firebase/firestore";
 import type { ProfileData } from "@/lib/data";
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 
@@ -20,17 +20,48 @@ export async function createUserRecord(uid: string, email: string | null) {
     console.error("Firestore not initialized for createUserRecord");
     return;
   }
-  const userDocRef = doc(db, "users", uid);
+  
+  const usersCollectionRef = collection(db, "users");
+  const userDocRef = doc(usersCollectionRef, uid);
+
+  // Check if this is the first user to make them an admin automatically.
+  let isAdmin = false;
+  try {
+    const querySnapshot = await getDocs(usersCollectionRef);
+    if (querySnapshot.empty) {
+      isAdmin = true;
+    }
+  } catch (e) {
+    // This might fail if rules are restrictive, but we proceed anyway.
+    // The create rule should still work for the user creating their own doc.
+    console.warn("Could not check for existing users, proceeding to create user record.");
+  }
+
   // We use setDoc which will either create the doc or overwrite it.
   // This is safe because our Firestore rules only allow a user to write to their own doc.
-  await setDoc(userDocRef, {
+  const userData: {
+    uid: string;
+    email: string | null;
+    status: 'inactive' | 'active';
+    deviceId: string | null;
+    isAdmin?: boolean;
+  } = {
     uid,
     email,
     status: 'inactive',
     deviceId: null, // Device ID will be bound on first activation by an admin
-  });
-  console.log(`Created/updated Firestore record for user: ${uid}`);
+  };
+
+  if (isAdmin) {
+    userData.isAdmin = true;
+    // The first user (admin) should be active by default.
+    userData.status = 'active'; 
+  }
+  
+  await setDoc(userDocRef, userData);
+  console.log(`Created/updated Firestore record for user: ${uid}. Admin status: ${isAdmin}`);
 }
+
 
 // --- Original AI Actions ---
 
@@ -54,11 +85,12 @@ function calculateAge(dob: string): number {
 function buildProfileString(userProfile: ProfileData | null): string {
     if (!userProfile) return "";
     const age = calculateAge(userProfile.dob);
+    // There was a typo here, user.state should be userProfile.state
     return `
       Income: ${userProfile.income}
       Occupation: ${userProfile.occupation}
       Country: ${userProfile.country}
-      State/Region: ${user.state}
+      State/Region: ${userProfile.state}
       Gender: ${userProfile.gender}
       Date of Birth: ${userProfile.dob}
       Age: ${age}

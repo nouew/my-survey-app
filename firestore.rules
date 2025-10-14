@@ -1,21 +1,43 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if a user is an admin
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthed() && request.auth.uid == userId;
+    }
     
-    // Admins can read the full list of users.
-    // Any authenticated user can create their own user document.
-    // Any authenticated user can read their own document.
-    // Admins can update any user document (to activate them).
+    function isAdmin() {
+      // Check if the user's document in Firestore has the 'isAdmin' flag set to true.
+      return isAuthed() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     match /users/{userId} {
-      allow list: if exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
-      allow read: if request.auth.uid == userId || 
-                     (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
-      allow create: if request.auth.uid == userId;
-      allow update: if exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      // CREATE: A user can create their own document.
+      allow create: if isOwner(userId);
+      
+      // READ: A user can read their own document. An admin can read any user document.
+      allow get: if isOwner(userId) || isAdmin();
+      
+      // UPDATE: An admin can update any user document (e.g., to activate them).
+      // A user cannot update their own document to prevent them from making themselves an admin.
+      allow update: if isAdmin();
+      
+      // DELETE: No one can delete user documents for safety.
+      allow delete: if false;
+
+      // LIST: Only an admin can list all users.
+      allow list: if isAdmin();
+    }
+    
+    // Default deny all other collections/documents
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
