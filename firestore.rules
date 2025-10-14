@@ -2,8 +2,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to read and write only their own document in the 'users' collection.
-    // The document ID must match the UID of the authenticated user.
+    // Users can only read and write their own data, stored in a document
+    // named after their user ID in the 'users' collection.
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
