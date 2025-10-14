@@ -2,9 +2,14 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // By default, deny all reads and writes to all documents.
-    // This is a secure default. As you add features that use Firestore,
-    // you can add specific rules to allow access to certain collections.
+    
+    // Users can only read and write to their own document in the 'users' collection.
+    // The document ID must match their authentication UID.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // By default, deny all other access to prevent unauthorized actions.
     match /{document=**} {
       allow read, write: if false;
     }

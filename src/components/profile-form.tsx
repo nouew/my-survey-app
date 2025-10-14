@@ -42,20 +42,23 @@ import {
   ethnicities,
 } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
-import { UserCircle2 } from "lucide-react";
+import { UserCircle2, Loader2 } from "lucide-react";
+import { saveProfileToFirestore, loadProfileFromFirestore } from "@/app/actions";
 
 interface ProfileFormProps {
   onSave: (data: ProfileData) => void;
   lang: Language;
-  storageKey: string;
+  onProfileLoad: (data: ProfileData | null) => void;
 }
 
 export function ProfileForm({ 
   onSave, 
   lang,
-  storageKey,
+  onProfileLoad,
 }: ProfileFormProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState("");
   const { toast } = useToast();
   const t = translations[lang];
@@ -89,24 +92,24 @@ export function ProfileForm({
     },
   });
 
-  // Effect to load data from localStorage ONLY on component mount
   useEffect(() => {
-    const savedDataString = localStorage.getItem(storageKey);
-    if (savedDataString) {
-      try {
-        const savedData = JSON.parse(savedDataString);
+    async function loadProfile() {
+      setIsLoading(true);
+      const savedData = await loadProfileFromFirestore();
+      if (savedData) {
         form.reset(savedData);
         setSelectedCountry(savedData.country || "");
-        setIsEditing(false); // Start in non-editing mode
-      } catch (e) {
-        console.error("Failed to parse profile from storage", e);
-        setIsEditing(true); // If parsing fails, start in editing mode
+        setIsEditing(false); // Start in non-editing mode if data exists
+        onProfileLoad(savedData);
+      } else {
+        setIsEditing(true); // If no data, start in editing mode
+        onProfileLoad(null);
       }
-    } else {
-      setIsEditing(true); // If no data, start in editing mode
+      setIsLoading(false);
     }
+    loadProfile();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
+  }, []);
   
   useEffect(() => {
     const subscription = form.watch((value) => {
@@ -118,13 +121,25 @@ export function ProfileForm({
   }, [form]);
 
 
-  const onSubmit = (data: z.infer<typeof profileSchema>) => {
-    onSave(data);
-    setIsEditing(false);
-    toast({
-      title: t.profile.toast.title,
-      description: t.profile.toast.description,
-    });
+  const onSubmit = async (data: z.infer<typeof profileSchema>) => {
+    setIsSaving(true);
+    const result = await saveProfileToFirestore(data);
+    
+    if (result.success) {
+      onSave(data);
+      setIsEditing(false);
+      toast({
+        title: t.profile.toast.title,
+        description: t.profile.toast.description,
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.error || "Failed to save profile.",
+      });
+    }
+    setIsSaving(false);
   };
 
   const handleCountryChange = (countryValue: string) => {
@@ -133,19 +148,38 @@ export function ProfileForm({
     form.setValue("state", "");
   };
   
-  const handleCancel = () => {
-    const savedDataString = localStorage.getItem(storageKey);
-     if (savedDataString) {
-        const savedData = JSON.parse(savedDataString);
-        form.reset(savedData);
-        setSelectedCountry(savedData.country || "");
-     }
+  const handleCancel = async () => {
+    setIsLoading(true);
+    const savedData = await loadProfileFromFirestore();
+    if (savedData) {
+      form.reset(savedData);
+      setSelectedCountry(savedData.country || "");
+    }
     setIsEditing(false);
+    setIsLoading(false);
   }
 
   const handleEdit = () => {
     setIsEditing(true);
   }
+  
+  if (isLoading) {
+    return (
+        <Card>
+            <CardHeader>
+                 <CardTitle className="flex items-center gap-2">
+                    <UserCircle2 className="text-primary" />
+                    {t.profile.title}
+                </CardTitle>
+                <CardDescription>{t.profile.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center h-40">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </CardContent>
+        </Card>
+    )
+  }
+
 
   return (
     <Card>
@@ -159,7 +193,6 @@ export function ProfileForm({
             <CardDescription>{t.profile.description}</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* All FormField components are the same, just with the disabled prop bound to !isEditing */}
             <FormField
               control={form.control}
               name="income"
@@ -170,7 +203,7 @@ export function ProfileForm({
                     <Input
                       placeholder="e.g., $50,000"
                       {...field}
-                      disabled={!isEditing}
+                      disabled={!isEditing || isSaving}
                     />
                   </FormControl>
                   <FormMessage />
@@ -187,7 +220,7 @@ export function ProfileForm({
                     <Input
                       placeholder="e.g., Software Engineer"
                       {...field}
-                      disabled={!isEditing}
+                      disabled={!isEditing || isSaving}
                     />
                   </FormControl>
                   <FormMessage />
@@ -203,7 +236,7 @@ export function ProfileForm({
                   <Select
                     onValueChange={handleCountryChange}
                     value={field.value}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                     dir={lang === "ar" ? "rtl" : "ltr"}
                   >
                     <FormControl>
@@ -232,7 +265,7 @@ export function ProfileForm({
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={!isEditing || !selectedCountry}
+                    disabled={!isEditing || !selectedCountry || isSaving}
                     dir={lang === "ar" ? "rtl" : "ltr"}
                   >
                     <FormControl>
@@ -262,7 +295,7 @@ export function ProfileForm({
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
                     <FormControl>
@@ -289,7 +322,7 @@ export function ProfileForm({
                 <FormItem>
                   <FormLabel>{t.profile.dob}</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} disabled={!isEditing} />
+                    <Input type="date" {...field} disabled={!isEditing || isSaving} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -304,7 +337,7 @@ export function ProfileForm({
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
                     <FormControl>
@@ -333,7 +366,7 @@ export function ProfileForm({
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
                     <FormControl>
@@ -362,7 +395,7 @@ export function ProfileForm({
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
                     <FormControl>
@@ -391,7 +424,7 @@ export function ProfileForm({
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                      dir={lang === "ar" ? "rtl" : "ltr"}
                   >
                     <FormControl>
@@ -415,11 +448,15 @@ export function ProfileForm({
           <CardFooter className="flex flex-col sm:flex-row gap-2">
             {isEditing ? (
               <>
-                <Button type="submit">{t.profile.save}</Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {t.profile.save}
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={handleCancel}
+                  disabled={isSaving}
                 >
                   {t.profile.cancel}
                 </Button>

@@ -13,9 +13,8 @@ import type { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
 import { useToast } from "@/hooks/use-toast";
 import { AnswerHistory, AnswerRecord } from "@/components/answer-history";
+import { saveHistoryToFirestore, loadHistoryFromFirestore } from "@/app/actions";
 
-
-const HISTORY_KEY_PREFIX = "global_insights_answer_history_";
 
 interface AssistantProps {
   profile: ProfileData | null;
@@ -27,44 +26,35 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
   const [question, setQuestion] = useState("");
   const [image, setImage] = useState<{ preview: string; dataUri: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<AnswerRecord[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const t = translations[lang];
 
-  const getHistoryKey = useCallback(() => `${HISTORY_KEY_PREFIX}${username}`, [username]);
-
   useEffect(() => {
-    // Load History for the specific user
-    const savedHistory = localStorage.getItem(getHistoryKey());
-    if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (error) {
-        console.error("Failed to parse history data:", error);
-        localStorage.removeItem(getHistoryKey());
-      }
-    } else {
-        setHistory([]);
+    async function loadHistory() {
+        setIsHistoryLoading(true);
+        const loadedHistory = await loadHistoryFromFirestore();
+        setHistory(loadedHistory);
+        setIsHistoryLoading(false);
     }
-  }, [username, getHistoryKey]);
+    loadHistory();
+  }, [username]);
 
-  const addToHistory = (newRecord: AnswerRecord) => {
-    const updatedHistory = [newRecord, ...history];
-    setHistory(updatedHistory);
-    localStorage.setItem(getHistoryKey(), JSON.stringify(updatedHistory));
-  };
+  const updateAndSaveHistory = useCallback(async (updatedHistory: AnswerRecord[]) => {
+      setHistory(updatedHistory);
+      await saveHistoryToFirestore(updatedHistory);
+  }, []);
   
   const handleDeleteItem = (indexToDelete: number) => {
     const updatedHistory = history.filter((_, index) => index !== indexToDelete);
-    setHistory(updatedHistory);
-    localStorage.setItem(getHistoryKey(), JSON.stringify(updatedHistory));
+    updateAndSaveHistory(updatedHistory);
   };
 
   const clearHistory = () => {
-    setHistory([]);
-    localStorage.removeItem(getHistoryKey());
+    updateAndSaveHistory([]);
   }
 
   const handleImageFile = useCallback((file: File) => {
@@ -154,12 +144,15 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
         userProfile: profileString,
       });
 
-
-      addToHistory({
+      const newRecord: AnswerRecord = {
         question: question || "Image Question",
         answer: result.answer,
         timestamp: new Date().toISOString(),
-      });
+      };
+      
+      const updatedHistory = [newRecord, ...history];
+      updateAndSaveHistory(updatedHistory);
+
       setQuestion("");
       setImage(null);
 
@@ -265,6 +258,7 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
         lang={lang} 
         onClear={clearHistory}
         onDeleteItem={handleDeleteItem}
+        isLoading={isHistoryLoading}
       />
 
     </div>

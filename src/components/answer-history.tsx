@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { History, Trash2, ClipboardCopy } from "lucide-react";
+import { History, Trash2, ClipboardCopy, Loader2 } from "lucide-react";
 import { translations, Language } from "@/lib/translations";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
@@ -23,21 +23,22 @@ interface AnswerHistoryProps {
   lang: Language;
   onClear: () => void;
   onDeleteItem: (index: number) => void;
+  isLoading: boolean;
 }
 
-export function AnswerHistory({ history, lang, onClear, onDeleteItem }: AnswerHistoryProps) {
+export function AnswerHistory({ history, lang, onClear, onDeleteItem, isLoading }: AnswerHistoryProps) {
   const t = translations[lang];
   const { toast } = useToast();
-  const [openItem, setOpenItem] = useState<string | undefined>(history.length > 0 ? "item-0" : undefined);
+  const [openItem, setOpenItem] = useState<string | undefined>();
 
   useEffect(() => {
-    // Automatically open the first item (the newest one) when history updates
-    if (history.length > 0) {
+    // Automatically open the first item (the newest one) when history updates and it's not loading
+    if (!isLoading && history.length > 0) {
       setOpenItem("item-0");
-    } else {
+    } else if (history.length === 0) {
       setOpenItem(undefined);
     }
-  }, [history]);
+  }, [history, isLoading]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -64,7 +65,12 @@ export function AnswerHistory({ history, lang, onClear, onDeleteItem }: AnswerHi
         )}
       </CardHeader>
       <CardContent>
-        {history.length === 0 ? (
+        {isLoading ? (
+             <div className="text-center text-muted-foreground py-8 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-primary me-3"/>
+                <p>Loading History...</p>
+            </div>
+        ) : history.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <p>{t.history.empty}</p>
           </div>
