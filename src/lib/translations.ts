@@ -13,7 +13,7 @@ export const translations = {
         usernamePlaceholder: "e.g. john-doe",
         continue: "Continue",
         activationTitle: "Enter Activation Key",
-        activationDescription: "Please enter the activation key provided by support.",
+        activationDescription: "Please enter the activation key for",
         activationKeyLabel: "Activation Key (UID)",
         activationKeyPlaceholder: "Paste your activation key here",
         loginButton: "Login",
@@ -21,6 +21,8 @@ export const translations = {
         pendingActivationTitle: "Account Pending Activation",
         pendingActivationDescription: "Your account has been created. To gain full access, please contact support to receive your activation key.",
         contactSupport: "Contact Support",
+        haveKey: "I already have a key",
+        backToUsername: "Back to username entry",
         errors: {
             "default": "An unknown error occurred. Please try again."
         },
@@ -113,7 +115,7 @@ export const translations = {
       usernamePlaceholder: "مثال: john-doe",
       continue: "متابعة",
       activationTitle: "أدخل مفتاح التفعيل",
-      activationDescription: "يرجى إدخال مفتاح التفعيل الذي تم تزويدك به من قبل الدعم.",
+      activationDescription: "الرجاء إدخال مفتاح التفعيل للمستخدم",
       activationKeyLabel: "مفتاح التفعيل (UID)",
       activationKeyPlaceholder: "الصق مفتاح التفعيل هنا",
       loginButton: "تسجيل الدخول",
@@ -121,6 +123,8 @@ export const translations = {
       pendingActivationTitle: "الحساب في انتظار التفعيل",
       pendingActivationDescription: "تم إنشاء حسابك بنجاح. للحصول على الوصول الكامل، يرجى التواصل مع الدعم لاستلام مفتاح التفعيل الخاص بك.",
       contactSupport: "تواصل مع الدعم",
+      haveKey: "لدي مفتاح بالفعل",
+      backToUsername: "العودة لصفحة اسم المستخدم",
       errors: {
         "default": "حدث خطأ غير معروف. يرجى المحاولة مرة أخرى."
       },

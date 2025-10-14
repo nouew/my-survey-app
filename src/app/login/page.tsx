@@ -63,9 +63,9 @@ export default function LoginPage() {
   const onUsernameSubmit = async (data: z.infer<typeof usernameSchema>) => {
     setIsLoading(true);
     setError(null);
+    setUsername(data.username); // Set username for all stages
     const result = await findOrCreateUser(data.username);
     if (result.status === 'exists') {
-      setUsername(data.username);
       setStage('activate');
     } else if (result.status === 'created') {
       setStage('pending');
@@ -146,7 +146,7 @@ export default function LoginPage() {
             <form onSubmit={activationForm.handleSubmit(onActivationSubmit)}>
               <CardHeader className="text-center">
                 <CardTitle>{t.auth.activationTitle}</CardTitle>
-                <CardDescription>{t.auth.activationDescription}</CardDescription>
+                <CardDescription>{t.auth.activationDescription} ({username})</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField
@@ -172,10 +172,13 @@ export default function LoginPage() {
                   </Alert>
                 )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col gap-4">
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                   {t.auth.loginButton}
+                </Button>
+                <Button variant="link" size="sm" onClick={() => { setStage('username'); setError(null); }}>
+                    {t.auth.backToUsername}
                 </Button>
               </CardFooter>
             </form>
@@ -184,19 +187,28 @@ export default function LoginPage() {
       )}
 
       {stage === 'pending' && (
-        <Alert className="max-w-md text-center">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{t.auth.pendingActivationTitle}</AlertTitle>
-          <AlertDescription>
-            {t.auth.pendingActivationDescription}
-          </AlertDescription>
-           <Button variant="link" className="mt-4" onClick={() => {
-               // Replace with actual support link
-               window.location.href = "https://t.me/your-support-channel";
-           }}>
-            {t.auth.contactSupport}
-          </Button>
-        </Alert>
+        <Card className="w-full max-w-sm">
+            <CardHeader className="text-center">
+                <AlertCircle className="mx-auto h-8 w-8 text-primary" />
+                <CardTitle>{t.auth.pendingActivationTitle}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <AlertDescription className="text-center">
+                  {t.auth.pendingActivationDescription}
+                </AlertDescription>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2">
+                <Button variant="outline" className="w-full" onClick={() => {
+                    // Replace with actual support link
+                    window.location.href = "https://t.me/your-support-channel";
+                }}>
+                    {t.auth.contactSupport}
+                </Button>
+                <Button variant="link" className="w-full" onClick={() => setStage('activate')}>
+                    {t.auth.haveKey}
+                </Button>
+            </CardFooter>
+        </Card>
       )}
     </div>
   );
