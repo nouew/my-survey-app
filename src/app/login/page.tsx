@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { createSession } from '@/app/actions';
+import { createSession, setTempEmailCookie } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -39,13 +39,20 @@ export default function LoginPage() {
     const auth = getAuth(app);
 
     try {
+      // 1. Set a temporary cookie with the email.
+      await setTempEmailCookie(email);
+      
+      // 2. Sign in with the client-side SDK.
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // The username will be the part of the email before the @ sign
-      const username = email.split('@')[0];
+      // 3. Get the ID token from the signed-in user.
+      const idToken = await user.getIdToken();
 
-      await createSession(user.uid, username);
+      // 4. Pass the token to a server action to create the session cookie.
+      await createSession(idToken);
+      
+      // 5. Redirect to the main app page.
       router.push('/');
       
     } catch (err: any) {
@@ -58,6 +65,7 @@ export default function LoginPage() {
           break;
         default:
           setError('An unexpected error occurred. Please try again.');
+          console.error(err);
           break;
       }
     }

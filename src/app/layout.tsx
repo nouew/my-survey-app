@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseProvider } from '@/lib/firebase-client.tsx';
+import { AuthProvider } from '@/hooks/use-auth';
 
 export const metadata: Metadata = {
   title: 'Global Survey Assistant',
@@ -33,10 +34,13 @@ export default function RootLayout({
             disableTransitionOnChange
         >
           <FirebaseProvider>
-            {children}
-            <Toaster />
+            <AuthProvider>
+                {children}
+                <Toaster />
+            </AuthProvider>
           </FirebaseProvider>
         </ThemeProvider>
       </body>
     </html>
   );
+}

@@ -3,6 +3,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { useFirebase } from "@/lib/firebase-client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +16,6 @@ import type { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
 import { useToast } from "@/hooks/use-toast";
 import { AnswerHistory, AnswerRecord } from "@/components/answer-history";
-import { saveHistoryToFirestore, loadHistoryFromFirestore } from "@/app/actions";
 
 
 interface AssistantProps {
@@ -32,21 +34,49 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const t = translations[lang];
+  const { db } = useFirebase();
+  const currentUser = useAuth();
 
-  useEffect(() => {
-    async function loadHistory() {
-        setIsHistoryLoading(true);
-        const loadedHistory = await loadHistoryFromFirestore();
-        setHistory(loadedHistory);
-        setIsHistoryLoading(false);
-    }
-    loadHistory();
-  }, [username]);
 
   const updateAndSaveHistory = useCallback(async (updatedHistory: AnswerRecord[]) => {
       setHistory(updatedHistory);
-      await saveHistoryToFirestore(updatedHistory);
-  }, []);
+      if (currentUser && db) {
+        try {
+            const userDocRef = doc(db, 'users', currentUser.uid);
+            await setDoc(userDocRef, { history: updatedHistory }, { merge: true });
+        } catch (error) {
+            console.error("Error saving history to Firestore:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to save history." });
+        }
+      }
+  }, [currentUser, db, toast]);
+
+  useEffect(() => {
+    async function loadHistory() {
+        if (!currentUser || !db) {
+            // Wait until user and db are available
+            if(!isHistoryLoading && history.length === 0) setIsHistoryLoading(true);
+            return;
+        }
+
+        setIsHistoryLoading(true);
+        try {
+            const userDocRef = doc(db, 'users', currentUser.uid);
+            const docSnap = await getDoc(userDocRef);
+            if (docSnap.exists() && Array.isArray(docSnap.data()?.history)) {
+                setHistory(docSnap.data()?.history as AnswerRecord[]);
+            } else {
+                setHistory([]);
+            }
+        } catch (error) {
+            console.error("Error loading history from Firestore:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to load history." });
+        } finally {
+            setIsHistoryLoading(false);
+        }
+    }
+    loadHistory();
+  }, [currentUser, db, toast, isHistoryLoading, history.length]);
   
   const handleDeleteItem = (indexToDelete: number) => {
     const updatedHistory = history.filter((_, index) => index !== indexToDelete);
@@ -229,7 +259,7 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
         </CardContent>
         <CardFooter className="flex-col items-start gap-4">
           <div className="flex gap-2">
-            <Button onClick={handleSubmit} disabled={isLoading || (!question && !image)}>
+            <Button onClick={handleSubmit} disabled={isLoading || (!question && !image) || !currentUser}>
               {isLoading ? (
                 <>
                   <Loader2 className="me-2 h-4 w-4 animate-spin" />

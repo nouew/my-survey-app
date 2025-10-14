@@ -5,6 +5,9 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { useFirebase } from "@/lib/firebase-client";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Card,
   CardContent,
@@ -43,7 +46,6 @@ import {
 } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
 import { UserCircle2, Loader2 } from "lucide-react";
-import { saveProfileToFirestore, loadProfileFromFirestore } from "@/app/actions";
 
 interface ProfileFormProps {
   onSave: (data: ProfileData) => void;
@@ -62,6 +64,9 @@ export function ProfileForm({
   const [selectedCountry, setSelectedCountry] = useState("");
   const { toast } = useToast();
   const t = translations[lang];
+  const { db } = useFirebase();
+  const currentUser = useAuth();
+
 
   const profileSchema = z.object({
     income: z.string().min(1, t.profile.errors.income),
@@ -94,22 +99,32 @@ export function ProfileForm({
 
   useEffect(() => {
     async function loadProfile() {
+      if (!currentUser || !db) return;
       setIsLoading(true);
-      const savedData = await loadProfileFromFirestore();
-      if (savedData) {
-        form.reset(savedData);
-        setSelectedCountry(savedData.country || "");
-        setIsEditing(false); // Start in non-editing mode if data exists
-        onProfileLoad(savedData);
-      } else {
-        setIsEditing(true); // If no data, start in editing mode
-        onProfileLoad(null);
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const docSnap = await getDoc(userDocRef);
+
+        if (docSnap.exists() && docSnap.data()?.profile) {
+            const savedData = docSnap.data()?.profile as ProfileData;
+            form.reset(savedData);
+            setSelectedCountry(savedData.country || "");
+            setIsEditing(false);
+            onProfileLoad(savedData);
+        } else {
+            setIsEditing(true);
+            onProfileLoad(null);
+        }
+      } catch (error) {
+        console.error("Error loading profile from Firestore:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to load profile." });
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
     loadProfile();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentUser, db]);
   
   useEffect(() => {
     const subscription = form.watch((value) => {
@@ -122,38 +137,44 @@ export function ProfileForm({
 
 
   const onSubmit = async (data: z.infer<typeof profileSchema>) => {
-    setIsSaving(true);
-    const result = await saveProfileToFirestore(data);
-    
-    if (result.success) {
-      onSave(data);
-      setIsEditing(false);
-      toast({
-        title: t.profile.toast.title,
-        description: t.profile.toast.description,
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: result.error || "Failed to save profile.",
-      });
+    if (!currentUser || !db) {
+        toast({ variant: "destructive", title: "Error", description: "User not authenticated." });
+        return;
     }
-    setIsSaving(false);
+
+    setIsSaving(true);
+    try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        await setDoc(userDocRef, { profile: data }, { merge: true });
+
+        onSave(data);
+        setIsEditing(false);
+        toast({
+            title: t.profile.toast.title,
+            description: t.profile.toast.description,
+        });
+    } catch (error) {
+        console.error("Error saving profile to Firestore:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to save profile.",
+        });
+    } finally {
+        setIsSaving(false);
+    }
   };
 
-  const handleCountryChange = (countryValue: string) => {
-    setSelectedCountry(countryValue);
-    form.setValue("country", countryValue);
-    form.setValue("state", "");
-  };
-  
   const handleCancel = async () => {
     setIsLoading(true);
-    const savedData = await loadProfileFromFirestore();
-    if (savedData) {
-      form.reset(savedData);
-      setSelectedCountry(savedData.country || "");
+    if (currentUser && db) {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists() && docSnap.data()?.profile) {
+            const savedData = docSnap.data()?.profile as ProfileData;
+            form.reset(savedData);
+            setSelectedCountry(savedData.country || "");
+        }
     }
     setIsEditing(false);
     setIsLoading(false);
@@ -234,7 +255,11 @@ export function ProfileForm({
                 <FormItem>
                   <FormLabel>{t.profile.country}</FormLabel>
                   <Select
-                    onValueChange={handleCountryChange}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedCountry(value);
+                      form.setValue("state", "");
+                    }}
                     value={field.value}
                     disabled={!isEditing || isSaving}
                     dir={lang === "ar" ? "rtl" : "ltr"}
@@ -391,8 +416,7 @@ export function ProfileForm({
               name="employment"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t.profile.employment}</FormLabel>
-                  <Select
+                  <FormLabel>{t.profile.employment}</FormLabel>                  <Select
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={!isEditing || isSaving}
@@ -448,7 +472,7 @@ export function ProfileForm({
           <CardFooter className="flex flex-col sm:flex-row gap-2">
             {isEditing ? (
               <>
-                <Button type="submit" disabled={isSaving}>
+                <Button type="submit" disabled={isSaving || !currentUser}>
                   {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {t.profile.save}
                 </Button>
@@ -456,13 +480,13 @@ export function ProfileForm({
                   type="button"
                   variant="ghost"
                   onClick={handleCancel}
-                  disabled={isSaving}
+                  disabled={isSaving || !currentUser}
                 >
                   {t.profile.cancel}
                 </Button>
               </>
             ) : (
-              <Button type="button" onClick={handleEdit}>
+              <Button type="button" onClick={handleEdit} disabled={!currentUser}>
                 {t.profile.edit}
               </Button>
             )}
