@@ -54,8 +54,7 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
   useEffect(() => {
     async function loadHistory() {
         if (!currentUser || !db) {
-            // Wait until user and db are available
-            if(!isHistoryLoading && history.length === 0) setIsHistoryLoading(true);
+            setIsHistoryLoading(true);
             return;
         }
 
@@ -64,7 +63,9 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
             const userDocRef = doc(db, 'users', currentUser.uid);
             const docSnap = await getDoc(userDocRef);
             if (docSnap.exists() && Array.isArray(docSnap.data()?.history)) {
-                setHistory(docSnap.data()?.history as AnswerRecord[]);
+                // The history is saved with newest first, but we should sort just in case.
+                const sortedHistory = (docSnap.data()?.history as AnswerRecord[]).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                setHistory(sortedHistory);
             } else {
                 setHistory([]);
             }
@@ -76,7 +77,7 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
         }
     }
     loadHistory();
-  }, [currentUser, db, toast, isHistoryLoading, history.length]);
+  }, [currentUser, db, toast]);
   
   const handleDeleteItem = (indexToDelete: number) => {
     const updatedHistory = history.filter((_, index) => index !== indexToDelete);
