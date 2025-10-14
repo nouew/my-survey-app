@@ -20,7 +20,6 @@ export function MainApp({ username }: MainAppProps) {
   const [lang, setLang] = useState<Language>("ar");
   const [dir, setDir] = useState<Direction>("rtl");
   const router = useRouter();
-  const isAdmin = username.toLowerCase() === 'admin';
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -61,13 +60,6 @@ export function MainApp({ username }: MainAppProps) {
             </h1>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
-            {isAdmin && (
-                 <Link href="/admin">
-                    <Button variant="ghost" size="icon" aria-label="Admin Panel">
-                        <Shield className="h-5 w-5" />
-                    </Button>
-                </Link>
-            )}
             <Link href="/course">
                 <Button variant="ghost" size="icon" aria-label={t.course.title}>
                     <BookOpen className="h-5 w-5" />

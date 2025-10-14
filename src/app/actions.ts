@@ -35,7 +35,7 @@ export async function createUser(username: string, password: string): Promise<Au
     await setDoc(userDocRef, {
       id: username.toLowerCase().trim(),
       uid: user.uid,
-      status: username.toLowerCase().trim() === 'admin' ? 'active' : 'inactive' // Admin is active by default
+      status: 'inactive' // All users start as inactive
     });
 
     return { status: 'pending', message: 'Account created. Awaiting admin activation.' };
@@ -98,29 +98,5 @@ export async function validateSession(uid: string): Promise<{ status: 'valid' | 
     } catch (error) {
         console.error("Session validation error:", error);
         return { status: 'invalid' };
-    }
-}
-
-// Securely validate if the current user is an admin
-export async function validateAdminSession(): Promise<boolean> {
-    const uid = cookies().get('uid')?.value;
-    const username = cookies().get('username')?.value;
-
-    if (!uid || !username || username.toLowerCase() !== 'admin') {
-        return false;
-    }
-
-    try {
-        const adminDocRef = doc(db, 'users', uid);
-        const adminDoc = await getDoc(adminDocRef);
-
-        if (adminDoc.exists() && adminDoc.data().id === 'admin' && adminDoc.data().status === 'active') {
-            return true;
-        }
-
-        return false;
-    } catch (error) {
-        console.error("Admin session validation error:", error);
-        return false;
     }
 }
