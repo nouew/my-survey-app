@@ -1,31 +1,21 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users Collection
+    
+    // Admins can read the full list of users.
+    // Any authenticated user can create their own user document.
+    // Any authenticated user can read their own document.
+    // Admins can update any user document (to activate them).
     match /users/{userId} {
-      // CREATE: Anyone can create their own user document.
+      allow list: if exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      allow read: if request.auth.uid == userId || 
+                     (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
       allow create: if request.auth.uid == userId;
-      
-      // READ: A user can only read their own document.
-      allow read: if request.auth.uid == userId;
-
-      // LIST: No one can list all users from the client.
-      // This is important for security. Admin fetching should be done with care.
-      allow list: if false;
-
-      // UPDATE: A user can only update their own document.
-      allow update: if request.auth.uid == userId;
-
-      // DELETE: A user can delete their own document.
-      allow delete: if request.auth.uid == userId;
-    }
-
-    // Default deny all other access
-    match /{document=**} {
-      allow read, write: if false;
+      allow update: if exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
   }
 }
