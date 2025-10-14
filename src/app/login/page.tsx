@@ -17,7 +17,7 @@ import { createUser, signInUser } from '@/app/actions';
 import { setCookie } from 'cookies-next';
 import { translations, Language, Direction } from "@/lib/translations";
 import { LanguageToggle } from '@/components/language-toggle';
-import { getAuth, signInWithCustomToken } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { app } from '@/lib/firebase-client';
 
 const auth = getAuth(app);
@@ -76,10 +76,7 @@ export default function LoginPage() {
     try {
       const result = await signInUser(cleanUsername, data.password);
 
-      if (result.status === 'success' && result.message) {
-        // Sign in with the custom token on the client
-        await signInWithCustomToken(auth, result.message);
-        
+      if (result.status === 'success') {
         setCookie('username', cleanUsername, { maxAge: 60 * 60 * 24 * 30 });
         setCookie('uid', result.uid!, { maxAge: 60 * 60 * 24 * 30 });
         router.push('/');

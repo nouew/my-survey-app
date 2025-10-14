@@ -2,16 +2,11 @@
 "use server";
 import 'dotenv/config';
 
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { adminApp } from '@/lib/firebase-admin';
-import { getAuth as getClientAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { getAuth as getClientAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { app, db as clientDb } from '@/lib/firebase-client';
 
-const serverAuth = getAuth(adminApp);
 const clientAuth = getClientAuth(app);
-
 
 interface AuthResult {
   status: 'success' | 'error' | 'pending';
@@ -30,17 +25,12 @@ export async function createUser(username: string, password: string): Promise<Au
   const email = formatEmail(cleanUsername);
 
   try {
-    const userRecord = await serverAuth.createUser({
-        email: email,
-        password: password,
-        displayName: cleanUsername,
-    });
-    
-    const uid = userRecord.uid;
+    const userCredential = await createUserWithEmailAndPassword(clientAuth, email, password);
+    const user = userCredential.user;
+    const uid = user.uid;
 
-    const db = getFirestore(adminApp);
-    const userDocRef = db.collection('users').doc(uid);
-    await userDocRef.set({
+    const userDocRef = doc(clientDb, "users", uid);
+    await setDoc(userDocRef, {
       id: cleanUsername,
       uid: uid,
       status: 'inactive'
@@ -82,13 +72,13 @@ export async function signInUser(username: string, password: string): Promise<Au
             return safelyReturn({ status: 'pending', message: 'Your account has not been activated by an administrator.' });
         }
         
-        // Use the Admin SDK on the server to create a custom token
-        const customToken = await serverAuth.createCustomToken(uid);
-
-        return safelyReturn({ status: 'success', message: customToken, uid: uid });
+        // At this point, login is successful and user is active.
+        // We will generate a custom token for the user to sign in with on the client.
+        // But for this simplified flow, we'll just return the UID.
+        return safelyReturn({ status: 'success', message: 'Login successful!', uid: uid });
 
     } catch (error: any) {
-        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
             return safelyReturn({ status: 'error', message: 'Invalid username or password.' });
         }
         console.error("Sign in error:", error);
