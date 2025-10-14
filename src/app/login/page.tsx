@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, AlertCircle, KeyRound, User, AtSign } from "lucide-react";
+import { Loader2, AlertCircle, KeyRound, User } from "lucide-react";
 import { createUser, signInUser } from '@/app/actions';
 import { setCookie } from 'cookies-next';
 import { translations, Language, Direction } from "@/lib/translations";
@@ -70,10 +70,9 @@ export default function LoginPage() {
     const result = await signInUser(data.username, data.password);
     
     if (result.status === 'success') {
-      const isAdmin = data.username.toLowerCase() === 'admin';
-      setCookie('username', data.username, { maxAge: 60 * 60 * 24 * 30 }); // 30 days
+      setCookie('username', data.username.toLowerCase().trim(), { maxAge: 60 * 60 * 24 * 30 });
       setCookie('uid', result.uid!, { maxAge: 60 * 60 * 24 * 30 });
-      router.push(isAdmin ? '/admin' : '/');
+      router.push('/');
     } else if (result.status === 'pending') {
       setPendingMessage(result.message);
     } else {
