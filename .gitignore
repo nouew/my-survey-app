@@ -36,10 +36,10 @@ yarn-error.log*
 next-env.d.ts
 
 # Firebase
-service-account.json
-*.firebase.*
-database-debug.log
-firestore-debug.log
-*~
-# My Survey App ignores
-secrets.json
+# We are commenting these out to ensure they are pushed to git
+# firebase.json
+# firestore.rules
+# storage.rules
+database.rules.json
+.firebaserc
+firebase-debug.log
