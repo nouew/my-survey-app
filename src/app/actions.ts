@@ -1,9 +1,9 @@
 
 "use server";
 
-import { db } from '@/lib/firebase-admin';
 import { collection, doc, getDoc, setDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/lib/firebase-client'; // Use client DB connection
 
 interface UserActionResult {
   status: 'created' | 'exists' | 'error';
@@ -42,8 +42,8 @@ export async function findOrCreateUser(username: string): Promise<UserActionResu
     }
   } catch (error: any) {
     console.error("Error in findOrCreateUser:", error.message);
-    if (error.message.includes('Could not load the default credentials')) {
-         return { status: 'error', message: 'Firebase Admin credentials are not configured on the server. Please check your .env file.' };
+    if (error.code === 'permission-denied') {
+        return { status: 'error', message: 'Permission denied. Check your Firestore security rules.' };
     }
     return { status: 'error', message: 'An unexpected error occurred on the server.' };
   }
@@ -86,10 +86,9 @@ export async function validateActivationKey(username: string, activationKey: str
     return { status: 'valid', message: 'Login successful.' };
   } catch (error: any) {
     console.error("Error in validateActivationKey:", error.message);
-    if (error.message.includes('Could not load the default credentials')) {
-       return { status: 'error', message: 'Firebase Admin credentials are not configured on the server.' };
+     if (error.code === 'permission-denied') {
+        return { status: 'error', message: 'Permission denied. Check your Firestore security rules.' };
     }
     return { status: 'error', message: 'An unexpected error occurred during validation.' };
   }
 }
-

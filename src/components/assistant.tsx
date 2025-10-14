@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, Lightbulb, Loader2, AlertCircle, X } from "lucide-react";
-import { generateAnswerAction } from "@/app/legacy-actions";
+import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 import type { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
 import { useToast } from "@/hooks/use-toast";
@@ -134,28 +134,38 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const result = await generateAnswerAction(
-        username, // Pass username as the user identifier
-        question,
-        image?.dataUri ?? null,
-        profile
-      );
+    const profileString = `
+    - Annual Income: ${profile.income}
+    - Occupation: ${profile.occupation}
+    - Location: ${profile.state}, ${profile.country}
+    - Gender: ${profile.gender}
+    - Date of Birth: ${profile.dob}
+    - Marital Status: ${profile.maritalStatus}
+    - Education: ${profile.education}
+    - Employment: ${profile.employment}
+    - Ethnicity: ${profile.ethnicity}
+    `;
 
-      if (result.error) {
-        setError(result.error);
-      } else if (result.answer) {
-        addToHistory({
-          question: question || "Image Question",
-          answer: result.answer,
-          timestamp: new Date().toISOString(),
-        });
-        setQuestion("");
-        setImage(null);
-      }
-    } catch (e) {
+    try {
+      const result = await generatePerfectAnswer({
+        userId: username,
+        questionData: question,
+        imageFile: image?.dataUri,
+        userProfile: profileString,
+      });
+
+
+      addToHistory({
+        question: question || "Image Question",
+        answer: result.answer,
+        timestamp: new Date().toISOString(),
+      });
+      setQuestion("");
+      setImage(null);
+
+    } catch (e: any) {
       console.error(e);
-      setError("An unexpected error occurred.");
+      setError(e.message || "An unexpected error occurred.");
     } finally {
       setIsLoading(false);
     }
