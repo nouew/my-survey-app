@@ -57,8 +57,9 @@ export async function createUser(username: string, password: string): Promise<Au
 // Function to sign in a user
 export async function signInUser(username: string, password: string): Promise<AuthResult> {
   try {
-    // Step 1: Authenticate with Firebase Auth
-    const userCredential = await signInWithEmailAndPassword(auth, formatEmail(username), password);
+    // Step 1: Authenticate with Firebase Auth -
+    // CRITICAL FIX: Use the lowercased username to match the creation logic
+    const userCredential = await signInWithEmailAndPassword(auth, formatEmail(username.toLowerCase().trim()), password);
     const user = userCredential.user;
 
     // Step 2: Use the UID from Auth to get the user's document from Firestore
