@@ -2,7 +2,7 @@
 "use server";
 
 import { db } from "@/lib/firebase";
-import { doc, setDoc, getDocs, collection, query, limit, getCountFromServer } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import type { ProfileData } from "@/lib/data";
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 
