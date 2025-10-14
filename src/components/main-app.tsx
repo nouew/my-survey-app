@@ -10,7 +10,6 @@ import { ManualAssistantPage } from "@/components/manual-assistant-page";
 import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { deleteCookie } from 'cookies-next';
 
 interface MainAppProps {
     username: string;
@@ -42,12 +41,6 @@ export function MainApp({ username }: MainAppProps) {
     }
   }, [lang]);
 
-  const handleLogout = () => {
-    deleteCookie('username');
-    deleteCookie('uid');
-    router.push('/login');
-  };
-
   const t = translations[lang];
 
   return (
@@ -72,9 +65,6 @@ export function MainApp({ username }: MainAppProps) {
             </Link>
             <LanguageToggle lang={lang} setLang={setLang} />
             <ThemeToggle />
-             <Button variant="ghost" size="icon" onClick={handleLogout} aria-label={t.auth.logout}>
-                <LogOut className="h-5 w-5" />
-            </Button>
           </div>
         </header>
 
