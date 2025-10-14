@@ -1,37 +1,31 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check if the requesting user is an admin.
-    // It reads the 'isAdmin' field from the user's own document.
-    function isUserAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    
+    // Helper function to check if a user is an admin
+    function isAdmin(userId) {
+      return exists(/databases/$(database)/documents/users/admin) && get(/databases/$(database)/documents/users/admin).data.uid == request.auth.token.uid;
     }
 
+    // Rules for the 'users' collection
     match /users/{userId} {
-      // READ: 
-      // 1. A user can read their own document.
-      // 2. An admin can read any user's document.
-      allow read: if request.auth.uid == userId || isUserAdmin();
-
-      // CREATE: 
-      // Any authenticated user can create their own document.
-      allow create: if request.auth.uid == userId;
       
-      // UPDATE:
-      // Only an admin can update a user's document (e.g., to change status to 'active').
-      allow update: if isUserAdmin();
-      
-      // DELETE:
-      // Nobody can delete user documents for safety. This can be changed if needed.
-      allow delete: if false;
-    }
+      // Allow anyone to create a new user document for themselves.
+      // This is needed for the initial user creation (signup).
+      allow create: if request.resource.data.id == userId;
 
-    // LIST:
-    // Only an admin can get the list of all users.
-    match /users/{collectionId} {
-      allow list: if isUserAdmin();
+      // Allow anyone to read user data. 
+      // This is needed for login checks and to see if a username exists.
+      allow read: if true;
+      
+      // Only an admin can update user documents (e.g., to change status to 'active').
+      // A regular user cannot change their own status.
+      allow update: if request.auth != null && isAdmin(request.auth.uid);
+      
+      // Only an admin can delete a user.
+      allow delete: if request.auth != null && isAdmin(request.auth.uid);
     }
   }
 }
