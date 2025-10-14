@@ -1,43 +1,31 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if a user is an admin
-    function isAuthed() {
-      return request.auth != null;
-    }
 
-    function isOwner(userId) {
-      return isAuthed() && request.auth.uid == userId;
+    // Helper function to check if a user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    function isAdmin() {
-      // Check if the user's document in Firestore has the 'isAdmin' flag set to true.
-      return isAuthed() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
-    }
-
     match /users/{userId} {
-      // CREATE: A user can create their own document.
-      allow create: if isOwner(userId);
+      // READ: Users can read their own document. Admins can read any user document.
+      allow read: if request.auth.uid == userId || isAdmin();
       
-      // READ: A user can read their own document. An admin can read any user document.
-      allow get: if isOwner(userId) || isAdmin();
-      
-      // UPDATE: An admin can update any user document (e.g., to activate them).
-      // A user cannot update their own document to prevent them from making themselves an admin.
+      // CREATE: Any authenticated user can create their own document.
+      allow create: if request.auth.uid == userId;
+
+      // UPDATE: Only admins can update user documents (e.g., to activate them).
+      // A user cannot update their own document.
       allow update: if isAdmin();
       
-      // DELETE: No one can delete user documents for safety.
-      allow delete: if false;
-
-      // LIST: Only an admin can list all users.
-      allow list: if isAdmin();
+      // DELETE: Only admins can delete user documents.
+      allow delete: if isAdmin();
     }
     
-    // Default deny all other collections/documents
-    match /{document=**} {
-      allow read, write: if false;
+    // LIST (for admin panel): Admins can list all documents in the 'users' collection.
+    match /users/{document=**} {
+      allow list: if isAdmin();
     }
   }
 }

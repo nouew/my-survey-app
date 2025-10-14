@@ -25,17 +25,11 @@ export async function createUserRecord(uid: string, email: string | null) {
   const userDocRef = doc(usersCollectionRef, uid);
 
   // Check if this is the first user to make them an admin automatically.
-  let isAdmin = false;
-  try {
-    const querySnapshot = await getDocs(usersCollectionRef);
-    if (querySnapshot.empty) {
-      isAdmin = true;
-    }
-  } catch (e) {
-    // This might fail if rules are restrictive, but we proceed anyway.
-    // The create rule should still work for the user creating their own doc.
-    console.warn("Could not check for existing users, proceeding to create user record.");
-  }
+  // This check is intentionally left without a try/catch. 
+  // If it fails due to security rules (which it will for non-admins), that's expected.
+  // The first user signup will succeed because no rules are being violated yet.
+  const querySnapshot = await getDocs(usersCollectionRef);
+  const isAdmin = querySnapshot.empty;
 
   // We use setDoc which will either create the doc or overwrite it.
   // This is safe because our Firestore rules only allow a user to write to their own doc.
@@ -58,6 +52,8 @@ export async function createUserRecord(uid: string, email: string | null) {
     userData.status = 'active'; 
   }
   
+  // Use setDoc to create the document. The security rules will allow this
+  // for the user creating their own document.
   await setDoc(userDocRef, userData);
   console.log(`Created/updated Firestore record for user: ${uid}. Admin status: ${isAdmin}`);
 }
