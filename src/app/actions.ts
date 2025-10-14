@@ -22,32 +22,38 @@ export async function createUserRecord(uid: string, email: string | null) {
   }
   
   const userDocRef = doc(db, "users", uid);
+  const userDoc = await getDoc(userDocRef);
 
-  // This is the hardcoded admin email. Only this user will be an admin.
-  const isAdmin = email === 'hakwa7952@gmail.com';
+  // CRITICAL FIX: Only create the user document if it does not already exist.
+  // This prevents overwriting the user's status and deviceId on every login.
+  if (!userDoc.exists()) {
+    // This is the hardcoded admin email. Only this user will be an admin.
+    const isAdmin = email === 'hakwa7952@gmail.com';
 
-  const userData: {
-    uid: string;
-    email: string | null;
-    status: 'inactive' | 'active';
-    deviceId: string | null;
-    isAdmin?: boolean;
-  } = {
-    uid,
-    email,
-    // The admin is active by default. All other users are inactive until an admin activates them.
-    status: isAdmin ? 'active' : 'inactive',
-    deviceId: null, 
-  };
+    const userData: {
+      uid: string;
+      email: string | null;
+      status: 'inactive' | 'active';
+      deviceId: string | null;
+      isAdmin?: boolean;
+    } = {
+      uid,
+      email,
+      // The admin is active by default. All other users are inactive until an admin activates them.
+      status: isAdmin ? 'active' : 'inactive',
+      deviceId: null, 
+    };
 
-  if (isAdmin) {
-    userData.isAdmin = true;
+    if (isAdmin) {
+      userData.isAdmin = true;
+    }
+    
+    // Using setDoc to create a new document.
+    await setDoc(userDocRef, userData);
+    console.log(`Created Firestore record for new user: ${uid}. Admin status: ${isAdmin}`);
+  } else {
+    console.log(`User record for ${uid} already exists. Skipping creation.`);
   }
-  
-  // Using setDoc with merge: false ensures we create a new document or completely overwrite an existing one.
-  // This is safer for creating users as it avoids merging with old data.
-  await setDoc(userDocRef, userData, { merge: false });
-  console.log(`Created/updated Firestore record for user: ${uid}. Admin status: ${isAdmin}`);
 }
 
 
@@ -163,4 +169,3 @@ export async function generateAnswerFromScreenshot(
     return { error: "An unexpected error occurred while analyzing the screenshot." };
   }
 }
-
