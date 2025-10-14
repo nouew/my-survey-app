@@ -1,21 +1,22 @@
 
 "use server";
 
-import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
+import { db } from "@/lib/firebase";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 import type { ProfileData } from "@/lib/data";
+import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 
 // =================================================================
-// In-memory database for user status and device binding
-// In a real production app, you MUST use a persistent database like Firestore.
+// Firestore-based database for user status and device binding
 // =================================================================
 interface UserRecord {
   uid: string;
   email: string | null;
   status: 'active' | 'inactive';
-  deviceId: string | null; // Will store the first device ID upon activation
+  deviceId: string | null;
 }
 
-const userDatabase: { [uid: string]: UserRecord } = {};
+const usersCollection = collection(db, "users");
 
 // Helper function to get a unique device identifier from request headers
 async function getDeviceId(): Promise<string> {
@@ -27,38 +28,50 @@ async function getDeviceId(): Promise<string> {
     return deviceId;
 }
 
-// Action to create a user record in our "database"
+// Action to create a user record in Firestore
 export async function createUserRecord(uid: string, email: string | null) {
-  if (!userDatabase[uid]) {
-    userDatabase[uid] = {
+  const userDocRef = doc(db, "users", uid);
+  const userDoc = await getDoc(userDocRef);
+
+  if (!userDoc.exists()) {
+    await setDoc(userDocRef, {
       uid,
       email,
       status: 'inactive', // All new users are inactive by default
       deviceId: null,
-    };
-    console.log(`Created record for user: ${uid}`);
+    });
+    console.log(`Created Firestore record for user: ${uid}`);
   }
 }
 
-// Action to get a user's status
+// Action to get a user's status from Firestore
 export async function getUserStatus(uid: string): Promise<{ status: 'active' | 'inactive' | 'not_found' }> {
-  const user = userDatabase[uid];
-  return { status: user ? user.status : 'not_found' };
+  const userDocRef = doc(db, "users", uid);
+  const userDoc = await getDoc(userDocRef);
+  
+  if (userDoc.exists()) {
+    return { status: userDoc.data().status || 'not_found' };
+  }
+  return { status: 'not_found' };
 }
 
 // Action to verify a device and bind it if necessary
 export async function verifyDevice(uid: string): Promise<{ isVerified: boolean }> {
-    const user = userDatabase[uid];
-    if (!user) return { isVerified: false };
+    const userDocRef = doc(db, "users", uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) return { isVerified: false };
     
-    // If user is inactive, device check is irrelevant.
+    const user = userDoc.data() as UserRecord;
+
+    // If user is inactive, device check is irrelevant for now.
     if (user.status === 'inactive') return { isVerified: true }; 
 
     const currentDeviceId = await getDeviceId();
 
     // If user is active but has no deviceId, this is their first login post-activation. Bind the device.
     if (user.status === 'active' && !user.deviceId) {
-        user.deviceId = currentDeviceId;
+        await updateDoc(userDocRef, { deviceId: currentDeviceId });
         console.log(`Device bound for user ${uid}: ${currentDeviceId}`);
         return { isVerified: true };
     }
@@ -77,14 +90,20 @@ export async function verifyDevice(uid: string): Promise<{ isVerified: boolean }
 // Admin actions
 export async function getAllUsers(): Promise<UserRecord[]> {
   // In a real app, you would add authentication to ensure only an admin can call this.
-  return Object.values(userDatabase);
+  const querySnapshot = await getDocs(usersCollection);
+  const users: UserRecord[] = [];
+  querySnapshot.forEach((doc) => {
+    users.push(doc.data() as UserRecord);
+  });
+  return users;
 }
 
 export async function activateUser(uid: string): Promise<{ success: boolean }> {
   // In a real app, you would add authentication to ensure only an admin can call this.
-  const user = userDatabase[uid];
-  if (user) {
-    user.status = 'active';
+  const userDocRef = doc(db, "users", uid);
+  const userDoc = await getDoc(userDocRef);
+  if (userDoc.exists()) {
+    await updateDoc(userDocRef, { status: 'active' });
     console.log(`Activated user: ${uid}`);
     return { success: true };
   }

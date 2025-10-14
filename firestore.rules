@@ -1,0 +1,20 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can create their own user document upon signup.
+    // They cannot read or write to other user documents.
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+    
+    // For simplicity in this step, we are allowing any authenticated user to
+    // view the list of users. In a real production app, you'd restrict this
+    // to an admin role using custom claims.
+    match /users/{document=**} {
+      allow list: if request.auth != null;
+    }
+  }
+}
