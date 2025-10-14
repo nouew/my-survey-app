@@ -3,8 +3,6 @@
 
 import { db } from '@/lib/firebase-admin';
 import { collection, doc, getDoc, setDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
-import { getCookie, setCookie } from 'cookies-next';
-import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 
 interface UserActionResult {
@@ -42,9 +40,12 @@ export async function findOrCreateUser(username: string): Promise<UserActionResu
       });
       return { status: 'created' };
     }
-  } catch (error) {
-    console.error("Error in findOrCreateUser:", error);
-    return { status: 'error', message: 'An unexpected error occurred.' };
+  } catch (error: any) {
+    console.error("Error in findOrCreateUser:", error.message);
+    if (error.message.includes('Could not load the default credentials')) {
+         return { status: 'error', message: 'Firebase Admin credentials are not configured on the server. Please check your .env file.' };
+    }
+    return { status: 'error', message: 'An unexpected error occurred on the server.' };
   }
 }
 
@@ -53,7 +54,6 @@ export async function validateActivationKey(username: string, activationKey: str
     
     // Handle admin login separately
     if (username.toLowerCase() === 'admin' && activationKey === process.env.ADMIN_ACTIVATION_KEY) {
-        // This is a simplified admin check. In a real app, you'd want more secure logic.
         const adminRef = doc(db, 'users', 'admin');
         const adminDoc = await getDoc(adminRef);
         if (!adminDoc.exists()) {
@@ -84,8 +84,12 @@ export async function validateActivationKey(username: string, activationKey: str
 
     // If key is valid and status is active
     return { status: 'valid', message: 'Login successful.' };
-  } catch (error) {
-    console.error("Error in validateActivationKey:", error);
+  } catch (error: any) {
+    console.error("Error in validateActivationKey:", error.message);
+    if (error.message.includes('Could not load the default credentials')) {
+       return { status: 'error', message: 'Firebase Admin credentials are not configured on the server.' };
+    }
     return { status: 'error', message: 'An unexpected error occurred during validation.' };
   }
 }
+
