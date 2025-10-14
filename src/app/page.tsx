@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, signOut, type User, type Auth } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { app, db } from "@/lib/firebase";
-import { Flame, BookMarked, BookOpen, LogOut, UserCog } from "lucide-react";
+import { Flame, BookMarked, BookOpen, LogOut, UserCog, Loader2 } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { translations, Language, Direction } from "@/lib/translations";
 import { ManualAssistantPage } from "@/components/manual-assistant-page";
@@ -55,11 +55,11 @@ export default function Home() {
             const data = userDoc.data() as UserData;
             setUserData(data);
 
-            // **REDIRECT LOGIC**
-            // 1. If user is admin, redirect to admin page immediately.
+            // **FIXED REDIRECT LOGIC**
+            // 1. If user is admin, redirect to admin page and STOP further execution.
             if (data.isAdmin) {
                 router.push('/admin');
-                return;
+                return; // This return is critical.
             }
 
             // 2. If user is inactive, block them.
@@ -69,6 +69,7 @@ export default function Home() {
             }
             
             // 3. If user is active but device doesn't match, block them.
+            // This check now only runs for non-admin users.
             const currentDeviceId = await getDeviceId();
             if (data.status === 'active' && data.deviceId && data.deviceId !== currentDeviceId) {
               router.push('/blocked?reason=device_mismatch');
@@ -130,15 +131,17 @@ export default function Home() {
     return (
        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
          <div className="w-full max-w-7xl space-y-8">
-            <Skeleton className="h-12 w-1/2" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 space-y-4">
-                    <Skeleton className="h-64 w-full" />
-                </div>
-                <div className="lg:col-span-2 space-y-4">
-                    <Skeleton className="h-48 w-full" />
-                    <Skeleton className="h-96 w-full" />
-                </div>
+            <header className="w-full max-w-7xl flex justify-between items-center">
+              <Skeleton className="h-12 w-1/4" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-10 w-10" />
+                <Skeleton className="h-10 w-10" />
+                <Skeleton className="h-10 w-10" />
+              </div>
+            </header>
+            <div className="text-center py-16">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+              <p className="mt-4 text-muted-foreground">Redirecting...</p>
             </div>
          </div>
        </div>

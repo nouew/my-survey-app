@@ -163,3 +163,4 @@ export async function generateAnswerFromScreenshot(
     return { error: "An unexpected error occurred while analyzing the screenshot." };
   }
 }
+
