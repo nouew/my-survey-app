@@ -17,26 +17,31 @@ const clientFirebaseConfig = {
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
+let firebaseInitializationError: Error | null = null;
+
 
 // Initialize Firebase for the client-side
-// We check if getApps().length is 0 to prevent re-initializing the app.
 // This code only runs in the browser.
 if (typeof window !== 'undefined') {
-    if (clientFirebaseConfig.apiKey && getApps().length === 0) {
-        try {
+    try {
+        if (clientFirebaseConfig.apiKey && getApps().length === 0) {
             app = initializeApp(clientFirebaseConfig);
+        } else if (clientFirebaseConfig.apiKey) {
+            app = getApp();
+        }
+
+        if (app) {
             auth = getAuth(app);
             db = getFirestore(app);
-        } catch (e) {
-            console.error("Failed to initialize Firebase", e)
+        } else {
+             throw new Error("Firebase configuration is missing or invalid. Please check your .env file.");
         }
-    } else if (clientFirebaseConfig.apiKey) {
-        app = getApp();
-        auth = getAuth(app);
-        db = getFirestore(app);
+    } catch (e: any) {
+        console.error("Failed to initialize Firebase", e);
+        firebaseInitializationError = e;
     }
 }
 
 
-// We export the client-side instances.
-export { app, auth, db };
+// We export the client-side instances and the potential error.
+export { app, auth, db, firebaseInitializationError };

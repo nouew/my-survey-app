@@ -19,12 +19,15 @@ const serverConfig = {
 let serverApp: FirebaseApp;
 let db: Firestore;
 
-// Initialize the server-side app if it hasn't been already
-if (serverConfig.apiKey && getApps().filter(app => app.name === 'server').length === 0) {
-    serverApp = initializeApp(serverConfig, 'server');
-    db = getFirestore(serverApp);
-} else if (serverConfig.apiKey) {
-    serverApp = getApp('server');
+function initializeServerFirebase() {
+    if (!serverConfig.projectId) {
+        throw new Error("Firebase server configuration is missing. Check environment variables.");
+    }
+    if (getApps().some(app => app.name === 'server')) {
+        serverApp = getApp('server');
+    } else {
+        serverApp = initializeApp(serverConfig, 'server');
+    }
     db = getFirestore(serverApp);
 }
 
@@ -35,39 +38,55 @@ async function getDeviceIdFromHeaders(): Promise<string> {
     return userAgent;
 }
 
-export async function createUserRecord(uid: string, email: string | null) {
-  if (!db) {
-    console.error("Firestore not initialized for createUserRecord. Check server environment variables.");
-    return;
+export async function createUserRecord(uid: string, email: string | null): Promise<{ success: boolean; error?: string }> {
+  try {
+    initializeServerFirebase();
+  } catch (e: any) {
+    console.error("Server Firebase initialization failed:", e);
+    return { success: false, error: "Server configuration error. Contact support." };
   }
   
   const userDocRef = doc(db, "users", uid);
-  const userDoc = await getDoc(userDocRef);
 
-  if (!userDoc.exists()) {
-    const isAdmin = email === 'hakwa7952@gmail.com';
+  try {
+    const userDoc = await getDoc(userDocRef);
 
-    const userData: {
-      uid: string;
-      email: string | null;
-      status: 'inactive' | 'active';
-      deviceId: string | null;
-      isAdmin?: boolean;
-    } = {
-      uid,
-      email,
-      status: isAdmin ? 'active' : 'inactive',
-      deviceId: null, 
-    };
+    if (!userDoc.exists()) {
+      const isAdmin = email === 'hakwa7952@gmail.com';
 
-    if (isAdmin) {
-      userData.isAdmin = true;
+      const userData: {
+        uid: string;
+        email: string | null;
+        status: 'inactive' | 'active';
+        deviceId: string | null;
+        isAdmin?: boolean;
+      } = {
+        uid,
+        email,
+        status: isAdmin ? 'active' : 'inactive',
+        deviceId: null, 
+      };
+
+      if (isAdmin) {
+        userData.isAdmin = true;
+      }
+      
+      await setDoc(userDocRef, userData);
+      console.log(`Created Firestore record for new user: ${uid}. Admin status: ${isAdmin}`);
+      return { success: true };
+    } else {
+      console.log(`User record for ${uid} already exists. Skipping creation.`);
+      return { success: true };
     }
-    
-    await setDoc(userDocRef, userData);
-    console.log(`Created Firestore record for new user: ${uid}. Admin status: ${isAdmin}`);
-  } else {
-    console.log(`User record for ${uid} already exists. Skipping creation.`);
+  } catch (e: any) {
+      console.error("Firestore operation failed in createUserRecord:", e);
+      if (e.code === 'permission-denied' || e.code === 7) {
+          return { success: false, error: "Firestore permission denied. Please check your Firestore rules or ensure the database is created." };
+      }
+       if (e.message.includes('Could not reach Cloud Firestore backend')) {
+        return { success: false, error: 'Could not connect to the database. It might not be created yet. Please contact support.' };
+      }
+      return { success: false, error: `An unexpected database error occurred: ${e.message}` };
   }
 }
 

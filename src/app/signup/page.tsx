@@ -5,13 +5,13 @@ import { useState, useEffect } from "react";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, type Auth } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { app, firebaseInitializationError } from "@/lib/firebase";
 import { createUserRecord } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, Flame } from 'lucide-react';
 import { translations, Language } from "@/lib/translations";
 
@@ -27,7 +27,14 @@ export default function SignupPage() {
   const router = useRouter();
   
   useEffect(() => {
-    if (!app) return;
+    if (firebaseInitializationError) {
+        setError(`Firebase Error: ${firebaseInitializationError.message}`);
+        return;
+    }
+    if (!app) {
+        setError("Firebase is not configured. Please add your Firebase configuration to the .env file.");
+        return;
+    }
     const authInstance = getAuth(app);
     setAuth(authInstance);
 
@@ -57,8 +64,14 @@ export default function SignupPage() {
     setError(null);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // **CRITICAL FIX**: Ensure the user record is created in Firestore after signup.
-      await createUserRecord(userCredential.user.uid, userCredential.user.email);
+      const dbResult = await createUserRecord(userCredential.user.uid, userCredential.user.email);
+      if (!dbResult.success) {
+        setError(dbResult.error || "Failed to create user record in database.");
+        setIsLoading(false);
+        // Optionally, delete the auth user if DB record fails
+        // await userCredential.user.delete();
+        return;
+      }
       // onAuthStateChanged will handle redirection.
     } catch (err: any) {
       const errorCode = err.code as keyof typeof t.auth.errors;
@@ -73,8 +86,12 @@ export default function SignupPage() {
     setError(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      // Create user record in our DB if it's a new user
-      await createUserRecord(result.user.uid, result.user.email);
+      const dbResult = await createUserRecord(result.user.uid, result.user.email);
+      if (!dbResult.success) {
+        setError(dbResult.error || "Failed to create user record in database.");
+        setIsLoading(false);
+        return;
+      }
        // Let the onAuthStateChanged handle redirection
     } catch (err: any) {
       const errorCode = err.code as keyof typeof t.auth.errors;
@@ -83,16 +100,22 @@ export default function SignupPage() {
     }
   };
 
-  if (!app) {
+  if (!app || firebaseInitializationError) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-background px-4">
-             <Card className="w-full max-w-md">
+             <Card className="w-full max-w-md border-destructive">
                 <CardHeader className="text-center">
-                    <CardTitle>Firebase Not Configured</CardTitle>
-                    <CardDescription>
-                        Please add your Firebase configuration to the .env file to enable authentication.
-                    </CardDescription>
+                    <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
+                    <CardTitle className="mt-4">Firebase Not Configured</CardTitle>
                 </CardHeader>
+                <CardContent>
+                    <Alert variant="destructive">
+                        <AlertTitle>Configuration Error</AlertTitle>
+                        <AlertDescription>
+                            {error || "An unknown error occurred during Firebase initialization."}
+                        </AlertDescription>
+                    </Alert>
+                </CardContent>
              </Card>
         </div>
     )
