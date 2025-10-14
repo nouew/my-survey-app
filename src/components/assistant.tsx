@@ -24,6 +24,18 @@ interface AssistantProps {
   username: string;
 }
 
+function calculateAge(dob: string): number {
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDifference = today.getMonth() - birthDate.getMonth();
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+}
+
+
 export function Assistant({ profile, lang, username }: AssistantProps) {
   const [question, setQuestion] = useState("");
   const [image, setImage] = useState<{ preview: string; dataUri: string } | null>(null);
@@ -155,12 +167,14 @@ export function Assistant({ profile, lang, username }: AssistantProps) {
     setIsLoading(true);
     setError(null);
 
+    const age = calculateAge(profile.dob);
+
     const profileString = `
+    - Age: ${age}
     - Annual Income: ${profile.income}
     - Occupation: ${profile.occupation}
     - Location: ${profile.state}, ${profile.country}
     - Gender: ${profile.gender}
-    - Date of Birth: ${profile.dob}
     - Marital Status: ${profile.maritalStatus}
     - Education: ${profile.education}
     - Employment: ${profile.employment}
