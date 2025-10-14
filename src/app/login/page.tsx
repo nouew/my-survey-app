@@ -81,9 +81,10 @@ export default function LoginPage() {
     const result = await validateActivationKey(username, data.activationKey);
     if (result.status === 'valid') {
       // Set cookies and redirect
+      const isAdmin = username.toLowerCase() === 'admin';
       setCookie('username', username, { maxAge: 60 * 60 * 24 * 30 }); // 30 days
       setCookie('activationKey', data.activationKey, { maxAge: 60 * 60 * 24 * 30 });
-      router.push('/');
+      router.push(isAdmin ? '/admin' : '/');
     } else {
       setError(result.message);
       setIsLoading(false);

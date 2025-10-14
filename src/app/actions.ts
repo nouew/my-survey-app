@@ -1,116 +1,91 @@
 
 "use server";
 
-import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
-import type { ProfileData } from "@/lib/data";
+import { db } from '@/lib/firebase-admin';
+import { collection, doc, getDoc, setDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { getCookie, setCookie } from 'cookies-next';
+import { cookies } from 'next/headers';
+import { v4 as uuidv4 } from 'uuid';
 
-interface ActionResult {
-  answer?: string;
-  error?: string;
+interface UserActionResult {
+  status: 'created' | 'exists' | 'error';
+  message?: string;
 }
 
-// Function to calculate age from date of birth
-function calculateAge(dob: string): number {
-  const birthDate = new Date(dob);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDifference = today.getMonth() - birthDate.getMonth();
-  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
+interface ValidationResult {
+  status: 'valid' | 'invalid' | 'inactive' | 'error';
+  message: string;
 }
 
-function buildProfileString(userProfile: ProfileData | null): string {
-    if (!userProfile) return "";
-    const age = calculateAge(userProfile.dob);
-    return `
-      Income: ${userProfile.income}
-      Occupation: ${userProfile.occupation}
-      Country: ${userProfile.country}
-      State/Region: ${userProfile.state}
-      Gender: ${userProfile.gender}
-      Date of Birth: ${userProfile.dob}
-      Age: ${age}
-      Marital Status: ${userProfile.maritalStatus}
-      Education: ${userProfile.education}
-      Employment: ${userProfile.employment}
-      Ethnicity: ${userProfile.ethnicity}
-    `;
-}
-
-export async function generateAnswerAction(
-  userId: string,
-  questionData: string,
-  imageFile: string | null,
-  userProfile: ProfileData | null
-): Promise<ActionResult> {
-  if (!questionData && !imageFile) {
-    return { error: "Please provide a question." };
+// Function to find a user by username or create a new one
+export async function findOrCreateUser(username: string): Promise<UserActionResult> {
+  if (username.toLowerCase() === 'admin') {
+     return { status: 'exists' };
   }
-  if (!userProfile) {
-    return { error: "Please complete your profile first." };
-  }
-  if (!userId) {
-    return { error: "User session not found. Please refresh the page."}
-  }
-
+  
+  const usersRef = collection(db, 'users');
+  const q = query(usersRef, where("id", "==", username));
+  
   try {
-    const profileString = buildProfileString(userProfile);
-    const input = {
-      userId,
-      questionData: questionData || '',
-      ...(imageFile && { imageFile }),
-      userProfile: profileString,
-    };
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      // User exists
+      return { status: 'exists' };
+    } else {
+      // User does not exist, create a new one
+      const newUserUid = uuidv4();
+      const userDocRef = doc(db, 'users', username);
+      await setDoc(userDocRef, {
+        id: username,
+        uid: newUserUid, // This is the activation key
+        status: 'inactive'
+      });
+      return { status: 'created' };
+    }
+  } catch (error) {
+    console.error("Error in findOrCreateUser:", error);
+    return { status: 'error', message: 'An unexpected error occurred.' };
+  }
+}
+
+// Function to validate the activation key for a given username
+export async function validateActivationKey(username: string, activationKey: string): Promise<ValidationResult> {
     
-    const result = await generatePerfectAnswer(input);
-    
-    if (!result.answer) {
-      return { error: "The AI could not generate an answer. Please try again." };
+    // Handle admin login separately
+    if (username.toLowerCase() === 'admin' && activationKey === process.env.ADMIN_ACTIVATION_KEY) {
+        // This is a simplified admin check. In a real app, you'd want more secure logic.
+        const adminRef = doc(db, 'users', 'admin');
+        const adminDoc = await getDoc(adminRef);
+        if (!adminDoc.exists()) {
+             await setDoc(adminRef, { id: 'admin', uid: activationKey, status: 'active' });
+        }
+        return { status: 'valid', message: 'Admin login successful.' };
     }
 
-    return { answer: result.answer };
-  } catch (error) {
-    console.error("Error generating perfect answer:", error);
-    return { error: "An unexpected error occurred. Please try again later." };
-  }
-}
 
-export async function generateAnswerFromScreenshot(
-  userId: string,
-  screenshotDataUri: string,
-  userProfile: ProfileData | null
-): Promise<ActionResult> {
-  if (!screenshotDataUri) {
-    return { error: "No screenshot provided." };
-  }
-  if (!userProfile) {
-    return { error: "User profile is missing." };
-  }
-   if (!userId) {
-    return { error: "User session not found. Please refresh the page."}
-  }
+  const userDocRef = doc(db, 'users', username);
 
   try {
-    const profileString = buildProfileString(userProfile);
-    const input = {
-      userId,
-      questionData: 'The user has provided a screenshot of the survey question. Analyze the image to identify the question and its options.',
-      imageFile: screenshotDataUri,
-      userProfile: profileString,
-    };
-    
-    const result = await generatePerfectAnswer(input);
-    
-    if (!result.answer) {
-      return { error: "The AI could not determine an answer from the screenshot." };
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      return { status: 'invalid', message: 'Username not found.' };
     }
 
-    return { answer: result.answer };
+    const userData = userDoc.data();
+
+    if (userData.uid !== activationKey) {
+      return { status: 'invalid', message: 'Invalid activation key.' };
+    }
+    
+    if (userData.status !== 'active') {
+        return { status: 'inactive', message: 'This account has not been activated by an administrator.' };
+    }
+
+    // If key is valid and status is active
+    return { status: 'valid', message: 'Login successful.' };
   } catch (error) {
-    console.error("Error generating answer from screenshot:", error);
-    return { error: "An unexpected error occurred while analyzing the screenshot." };
+    console.error("Error in validateActivationKey:", error);
+    return { status: 'error', message: 'An unexpected error occurred during validation.' };
   }
 }
-
