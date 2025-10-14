@@ -1,28 +1,12 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Rules for the 'users' collection
-    match /users/{userId} {
-
-      // CREATE: Allow a new user to be created during signup, but only if the document's
-      // UID matches the new user's auth UID and the status is 'inactive'.
-      allow create: if request.auth != null && 
-                       request.auth.uid == userId && 
-                       request.resource.data.status == 'inactive';
-
-      // READ: An authenticated user can read any user profile. This is needed
-      // to check the 'status' field after logging in.
-      allow read: if request.auth != null;
-
-      // UPDATE: Only an admin can update a user's status. We identify the admin
-      // by checking if their auth UID matches the UID in the 'admin' document.
-      allow update: if request.auth != null &&
-                       exists(/databases/$(database)/documents/users/admin) &&
-                       get(/databases/$(database)/documents/users/admin).data.uid == request.auth.uid;
-                       
-      // DELETE: Nobody can delete user documents.
-      allow delete: if false;
+    // By default, deny all reads and writes to all documents.
+    // This is a secure default. As you add features that use Firestore,
+    // you can add specific rules to allow access to certain collections.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
