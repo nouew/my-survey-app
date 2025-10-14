@@ -23,7 +23,7 @@ export async function createUserRecord(uid: string, email: string | null) {
   
   const userDocRef = doc(db, "users", uid);
 
-  // Hardcode the admin email for reliability.
+  // This is the hardcoded admin email. Only this user will be an admin.
   const isAdmin = email === 'hakwa7952@gmail.com';
 
   const userData: {
