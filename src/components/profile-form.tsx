@@ -46,7 +46,6 @@ import { UserCircle2 } from "lucide-react";
 
 interface ProfileFormProps {
   onSave: (data: ProfileData) => void;
-  initialProfile: ProfileData | null;
   lang: Language;
   storageKey: string;
 }
@@ -135,7 +134,12 @@ export function ProfileForm({
   };
   
   const handleCancel = () => {
-    form.reset(); // Reset to the last committed form state (from last successful load or submit)
+    const savedDataString = localStorage.getItem(storageKey);
+     if (savedDataString) {
+        const savedData = JSON.parse(savedDataString);
+        form.reset(savedData);
+        setSelectedCountry(savedData.country || "");
+     }
     setIsEditing(false);
   }
 
@@ -431,5 +435,3 @@ export function ProfileForm({
     </Card>
   );
 }
-
-    

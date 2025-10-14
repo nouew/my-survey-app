@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -6,34 +7,39 @@ import { Assistant } from "@/components/assistant";
 import { ProfileData } from "@/lib/data";
 import type { Language } from "@/lib/translations";
 
-const PROFILE_KEY = "global_insights_profile_data_manual";
+const PROFILE_KEY_PREFIX = "global_insights_profile_";
 
 interface ManualAssistantPageProps {
   lang: Language;
+  username: string;
 }
 
-export function ManualAssistantPage({ lang }: ManualAssistantPageProps) {
+export function ManualAssistantPage({ lang, username }: ManualAssistantPageProps) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isClient, setIsClient] = useState(false);
 
+  const getProfileKey = useCallback(() => `${PROFILE_KEY_PREFIX}${username}`, [username]);
+
   useEffect(() => {
     setIsClient(true);
-    // Load Profile
-    const savedProfile = localStorage.getItem(PROFILE_KEY);
+    // Load Profile for the specific user
+    const savedProfile = localStorage.getItem(getProfileKey());
     if (savedProfile) {
       try {
         setProfile(JSON.parse(savedProfile));
       } catch (error) {
         console.error("Failed to parse profile data:", error);
-        localStorage.removeItem(PROFILE_KEY);
+        localStorage.removeItem(getProfileKey());
       }
+    } else {
+        setProfile(null);
     }
-  }, []);
+  }, [username, getProfileKey]);
 
   const handleProfileSave = useCallback((data: ProfileData) => {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(data));
+    localStorage.setItem(getProfileKey(), JSON.stringify(data));
     setProfile(data);
-  }, []);
+  }, [getProfileKey]);
   
   if (!isClient) {
     return (
@@ -53,14 +59,14 @@ export function ManualAssistantPage({ lang }: ManualAssistantPageProps) {
       <div className="lg:col-span-1">
         <ProfileForm
           onSave={handleProfileSave}
-          initialProfile={profile}
           lang={lang}
-          storageKey={PROFILE_KEY}
+          storageKey={getProfileKey()}
         />
       </div>
       <div className="lg:col-span-2">
-        <Assistant profile={profile} lang={lang} />
+        <Assistant profile={profile} lang={lang} username={username} />
       </div>
     </div>
   );
 }
+

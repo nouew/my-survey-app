@@ -8,67 +8,63 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, Lightbulb, Loader2, AlertCircle, X } from "lucide-react";
-// import { generateAnswerAction } from "@/app/actions";
+import { generateAnswerAction } from "@/app/legacy-actions";
 import type { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
 import { useToast } from "@/hooks/use-toast";
 import { AnswerHistory, AnswerRecord } from "@/components/answer-history";
 
-const USER_ID_KEY = "global_insights_user_id";
-const HISTORY_KEY = "global_insights_answer_history";
+
+const HISTORY_KEY_PREFIX = "global_insights_answer_history_";
 
 interface AssistantProps {
   profile: ProfileData | null;
   lang: Language;
+  username: string;
 }
 
-export function Assistant({ profile, lang }: AssistantProps) {
+export function Assistant({ profile, lang, username }: AssistantProps) {
   const [question, setQuestion] = useState("");
   const [image, setImage] = useState<{ preview: string; dataUri: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [history, setHistory] = useState<AnswerRecord[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const t = translations[lang];
 
-  useEffect(() => {
-    // Load User ID
-    let storedUserId = localStorage.getItem(USER_ID_KEY);
-    if (!storedUserId) {
-      storedUserId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      localStorage.setItem(USER_ID_KEY, storedUserId);
-    }
-    setUserId(storedUserId);
+  const getHistoryKey = useCallback(() => `${HISTORY_KEY_PREFIX}${username}`, [username]);
 
-    // Load History
-    const savedHistory = localStorage.getItem(HISTORY_KEY);
+  useEffect(() => {
+    // Load History for the specific user
+    const savedHistory = localStorage.getItem(getHistoryKey());
     if (savedHistory) {
       try {
         setHistory(JSON.parse(savedHistory));
       } catch (error) {
         console.error("Failed to parse history data:", error);
-        localStorage.removeItem(HISTORY_KEY);
+        localStorage.removeItem(getHistoryKey());
       }
+    } else {
+        setHistory([]);
     }
-  }, []);
+  }, [username, getHistoryKey]);
 
   const addToHistory = (newRecord: AnswerRecord) => {
     const updatedHistory = [newRecord, ...history];
     setHistory(updatedHistory);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+    localStorage.setItem(getHistoryKey(), JSON.stringify(updatedHistory));
   };
   
   const handleDeleteItem = (indexToDelete: number) => {
     const updatedHistory = history.filter((_, index) => index !== indexToDelete);
     setHistory(updatedHistory);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+    localStorage.setItem(getHistoryKey(), JSON.stringify(updatedHistory));
   };
 
   const clearHistory = () => {
     setHistory([]);
-    localStorage.removeItem(HISTORY_KEY);
+    localStorage.removeItem(getHistoryKey());
   }
 
   const handleImageFile = useCallback((file: File) => {
@@ -126,9 +122,43 @@ export function Assistant({ profile, lang }: AssistantProps) {
 
 
   const handleSubmit = async () => {
-    // This function is currently disabled as we removed the backend actions.
-    setError("The generation feature is temporarily disabled.");
-    return;
+    if (!question && !image) {
+      setError(t.assistant.inputError);
+      return;
+    }
+    if (!profile) {
+      setError(t.assistant.profileError);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await generateAnswerAction(
+        username, // Pass username as the user identifier
+        question,
+        image?.dataUri ?? null,
+        profile
+      );
+
+      if (result.error) {
+        setError(result.error);
+      } else if (result.answer) {
+        addToHistory({
+          question: question || "Image Question",
+          answer: result.answer,
+          timestamp: new Date().toISOString(),
+        });
+        setQuestion("");
+        setImage(null);
+      }
+    } catch (e) {
+      console.error(e);
+      setError("An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const resetForm = () => {

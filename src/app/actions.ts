@@ -1,8 +1,8 @@
 
 "use server";
 
-import type { ProfileData } from "@/lib/data";
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
+import type { ProfileData } from "@/lib/data";
 
 interface ActionResult {
   answer?: string;
@@ -113,3 +113,4 @@ export async function generateAnswerFromScreenshot(
     return { error: "An unexpected error occurred while analyzing the screenshot." };
   }
 }
+
