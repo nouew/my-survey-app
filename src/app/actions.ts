@@ -31,17 +31,16 @@ async function getDeviceId(): Promise<string> {
 // Action to create a user record in Firestore
 export async function createUserRecord(uid: string, email: string | null) {
   const userDocRef = doc(db, "users", uid);
-  const userDoc = await getDoc(userDocRef);
-
-  if (!userDoc.exists()) {
-    await setDoc(userDocRef, {
-      uid,
-      email,
-      status: 'inactive', // All new users are inactive by default
-      deviceId: null,
-    });
-    console.log(`Created Firestore record for user: ${uid}`);
-  }
+  // The original check 'getDoc' was causing a permission error.
+  // By using setDoc directly, we rely on the 'create' security rule,
+  // which is correctly configured to allow a user to create their own document.
+  await setDoc(userDocRef, {
+    uid,
+    email,
+    status: 'inactive', // All new users are inactive by default
+    deviceId: null,
+  });
+  console.log(`Created Firestore record for user: ${uid}`);
 }
 
 // Action to get a user's status from Firestore
