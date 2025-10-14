@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, Lightbulb, Loader2, AlertCircle, X } from "lucide-react";
-import { generateAnswerAction } from "@/app/actions";
+// import { generateAnswerAction } from "@/app/actions";
 import type { ProfileData } from "@/lib/data";
 import { translations, Language } from "@/lib/translations";
 import { useToast } from "@/hooks/use-toast";
@@ -126,40 +126,9 @@ export function Assistant({ profile, lang }: AssistantProps) {
 
 
   const handleSubmit = async () => {
-    if (!profile) {
-      setError(t.assistant.profileError);
-      return;
-    }
-    if (!question && !image) {
-      setError(t.assistant.inputError);
-      return;
-    }
-    if (!userId) {
-      setError("User session not found. Please refresh the page.");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    const result = await generateAnswerAction(
-      userId,
-      question,
-      image?.dataUri ?? null,
-      profile
-    );
-
-    if (result.error) {
-      setError(result.error);
-    } else if (result.answer) {
-      addToHistory({
-        question: question || "Image-based question",
-        answer: result.answer,
-        timestamp: new Date().toISOString(),
-      });
-      resetForm();
-    }
-    setIsLoading(false);
+    // This function is currently disabled as we removed the backend actions.
+    setError("The generation feature is temporarily disabled.");
+    return;
   };
   
   const resetForm = () => {
