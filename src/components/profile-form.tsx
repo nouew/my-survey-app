@@ -469,30 +469,34 @@ export function ProfileForm({
               )}
             />
           </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row gap-2">
-            {isEditing ? (
-              <>
+          {/* Form submission button is inside the form */}
+          {isEditing && (
+            <CardFooter>
                 <Button type="submit" disabled={isSaving || !currentUser}>
                   {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {t.profile.save}
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleCancel}
-                  disabled={isSaving || !currentUser}
-                >
-                  {t.profile.cancel}
-                </Button>
-              </>
-            ) : (
-              <Button type="button" onClick={handleEdit} disabled={!currentUser}>
-                {t.profile.edit}
-              </Button>
-            )}
-          </CardFooter>
+            </CardFooter>
+          )}
         </form>
       </Form>
+      {/* Control buttons are now outside the form */}
+      <CardFooter className="flex flex-col sm:flex-row gap-2 pt-4">
+        {isEditing ? (
+          <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCancel}
+              disabled={isSaving || !currentUser}
+            >
+              {t.profile.cancel}
+            </Button>
+        ) : (
+          <Button type="button" onClick={handleEdit} disabled={!currentUser}>
+            {t.profile.edit}
+          </Button>
+        )}
+      </CardFooter>
     </Card>
   );
 }
