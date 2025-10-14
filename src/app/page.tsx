@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import { getAuth, onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { getAuth, onAuthStateChanged, signOut, type User, type Auth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import { Flame, BookMarked, BookOpen, LogOut } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
@@ -15,17 +15,24 @@ import { Button } from "@/components/ui/button";
 import { getUserStatus, verifyDevice } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const auth = getAuth(app);
-
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Language>("ar");
   const [dir, setDir] = useState<Direction>("rtl");
+  const [auth, setAuth] = useState<Auth | null>(null);
+
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (!app) {
+        setLoading(false); // If firebase is not configured, don't show loading screen
+        return;
+    };
+    const authInstance = getAuth(app);
+    setAuth(authInstance);
+
+    const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
       if (user) {
         setUser(user);
         const { status } = await getUserStatus(user.uid);
@@ -60,19 +67,20 @@ export default function Home() {
       const newDir = lang === "ar" ? "rtl" : "ltr";
       document.documentElement.lang = lang;
       document.documentElement.dir = newDir;
-      setDir(newDir);
       localStorage.setItem("global_insights_lang", lang);
     }
   }, [lang]);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.push('/login');
+    if (auth) {
+        await signOut(auth);
+        router.push('/login');
+    }
   };
 
   const t = translations[lang];
 
-  if (loading || !user) {
+  if (loading && auth) { // Only show loading if firebase is configured
     return (
        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
          <div className="w-full max-w-7xl space-y-8">
@@ -111,9 +119,11 @@ export default function Home() {
                     <BookMarked className="h-5 w-5" />
                 </Button>
             </Link>
-            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label={t.auth.logout}>
-              <LogOut className="h-5 w-5" />
-            </Button>
+            {auth && user && (
+              <Button variant="ghost" size="icon" onClick={handleLogout} aria-label={t.auth.logout}>
+                <LogOut className="h-5 w-5" />
+              </Button>
+            )}
             <LanguageToggle lang={lang} setLang={setLang} />
             <ThemeToggle />
           </div>

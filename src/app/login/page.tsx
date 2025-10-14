@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, type Auth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import { createUserRecord } from "../actions";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, Flame } from 'lucide-react';
 import { translations, Language } from "@/lib/translations";
 
-const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 export default function LoginPage() {
@@ -24,16 +23,22 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [lang, setLang] = useState<Language>('ar');
+  const [auth, setAuth] = useState<Auth | null>(null);
   const router = useRouter();
 
   useEffect(() => {
+    if (!app) return;
+    const authInstance = getAuth(app);
+    setAuth(authInstance);
+
     // Redirect if user is already logged in
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(authInstance, (user) => {
       if (user) {
         router.push('/');
       }
     });
-     if (typeof window !== "undefined") {
+
+    if (typeof window !== "undefined") {
       const storedLang = (localStorage.getItem("global_insights_lang") as Language) || "ar";
       setLang(storedLang);
       const newDir = storedLang === "ar" ? "rtl" : "ltr";
@@ -47,6 +52,7 @@ export default function LoginPage() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -60,6 +66,7 @@ export default function LoginPage() {
   };
   
   const handleGoogleLogin = async () => {
+    if (!auth) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -73,6 +80,21 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  if (!app) {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-background px-4">
+             <Card className="w-full max-w-md">
+                <CardHeader className="text-center">
+                    <CardTitle>Firebase Not Configured</CardTitle>
+                    <CardDescription>
+                        Please add your Firebase configuration to the .env file to enable authentication.
+                    </CardDescription>
+                </CardHeader>
+             </Card>
+        </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background px-4">
