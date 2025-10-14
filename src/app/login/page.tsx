@@ -67,6 +67,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     setPendingMessage(null);
+
     const result = await signInUser(data.username, data.password);
     
     if (result.status === 'success') {
@@ -87,9 +88,11 @@ export default function LoginPage() {
     setPendingMessage(null);
 
     const result = await createUser(data.username, data.password);
+    
     if (result.status === 'pending') {
         setPendingMessage(result.message);
-    } else {
+        signupForm.reset();
+    } else if (result.status === 'error') {
         setError(result.message);
     }
     setIsLoading(false);
