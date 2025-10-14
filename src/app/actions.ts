@@ -6,8 +6,7 @@ import { getFirestore, doc, setDoc, getDoc, type Firestore } from "firebase/fire
 import type { ProfileData } from "@/lib/data";
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 
-// SERVER-SIDE aONLY: Firebase initialization for Server Actions
-// This uses the NEXT_PUBLIC_ variables because they are available in both server and client environments in Next.js
+// SERVER-SIDE ONLY: Firebase initialization for Server Actions
 const serverConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -21,7 +20,7 @@ let serverApp: FirebaseApp;
 let db: Firestore;
 
 // Initialize the server-side app if it hasn't been already
-if (serverConfig.apiKey && !getApps().find(app => app.name === 'server')) {
+if (serverConfig.apiKey && getApps().filter(app => app.name === 'server').length === 0) {
     serverApp = initializeApp(serverConfig, 'server');
     db = getFirestore(serverApp);
 } else if (serverConfig.apiKey) {

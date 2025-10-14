@@ -20,8 +20,9 @@ let db: Firestore | undefined;
 
 // Initialize Firebase for the client-side
 // We check if getApps().length is 0 to prevent re-initializing the app.
+// This code only runs in the browser.
 if (typeof window !== 'undefined') {
-    if (clientFirebaseConfig.apiKey && !getApps().length) {
+    if (clientFirebaseConfig.apiKey && getApps().length === 0) {
         try {
             app = initializeApp(clientFirebaseConfig);
             auth = getAuth(app);
@@ -38,5 +39,4 @@ if (typeof window !== 'undefined') {
 
 
 // We export the client-side instances.
-// In server-side files (like actions.ts), we will need to initialize a separate instance.
 export { app, auth, db };
