@@ -3,8 +3,9 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
-// Config for client-side (browser)
-const clientConfig = {
+// This configuration is for the CLIENT-SIDE (browser environment)
+// It uses NEXT_PUBLIC_ variables which are exposed to the browser.
+const clientFirebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -13,38 +14,25 @@ const clientConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Config for server-side (actions)
-const serverConfig = {
-    apiKey: process.env.FIREBASE_API_KEY,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.FIREBASE_APP_ID,
-};
-
-// Determine which config to use based on the environment
-const firebaseConfig = typeof window !== 'undefined' ? clientConfig : serverConfig;
-
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 
-// Initialize Firebase only if it hasn't been initialized yet
-if (!getApps().length) {
-    // We only initialize if the necessary config is present
-    if (firebaseConfig.apiKey) {
-        app = initializeApp(firebaseConfig);
+// Initialize Firebase for the client-side
+// We check if getApps().length is 0 to prevent re-initializing the app.
+if (typeof window !== 'undefined' && !getApps().length) {
+    if (clientFirebaseConfig.apiKey) {
+        app = initializeApp(clientFirebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
     }
-} else {
+} else if (typeof window !== 'undefined') {
     app = getApp();
-}
-
-// @ts-ignore - 'app' can be uninitialized here, which is intended if config is missing.
-if (app) {
     auth = getAuth(app);
     db = getFirestore(app);
 }
 
-// @ts-ignore
+// We export the client-side instances.
+// In server-side files (like actions.ts), we will need to initialize a separate instance.
+// @ts-ignore - these can be undefined if config is not set, which is handled in components.
 export { app, auth, db };

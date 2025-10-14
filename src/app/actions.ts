@@ -1,10 +1,36 @@
 
 "use server";
 
-import { db } from "@/lib/firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc, type Firestore } from "firebase/firestore";
 import type { ProfileData } from "@/lib/data";
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
+
+// SERVER-SIDE aONLY: Firebase initialization for Server Actions
+// This uses the server-only environment variables.
+const serverConfig = {
+    apiKey: process.env.FIREBASE_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.FIREBASE_APP_ID,
+};
+
+let serverApp: FirebaseApp;
+let db: Firestore;
+
+// Initialize the server-side app if it hasn't been already
+if (!getApps().find(app => app.name === 'server')) {
+    if (serverConfig.apiKey) {
+        serverApp = initializeApp(serverConfig, 'server');
+        db = getFirestore(serverApp);
+    }
+} else {
+    serverApp = getApp('server');
+    db = getFirestore(serverApp);
+}
+
 
 async function getDeviceIdFromHeaders(): Promise<string> {
     const { headers } = await import('next/headers');
@@ -21,8 +47,6 @@ export async function createUserRecord(uid: string, email: string | null) {
   const userDocRef = doc(db, "users", uid);
   const userDoc = await getDoc(userDocRef);
 
-  // Only create the document if it DOES NOT exist.
-  // This prevents overwriting data on subsequent logins.
   if (!userDoc.exists()) {
     const isAdmin = email === 'hakwa7952@gmail.com';
 
@@ -73,7 +97,6 @@ function calculateAge(dob: string): number {
 function buildProfileString(userProfile: ProfileData | null): string {
     if (!userProfile) return "";
     const age = calculateAge(userProfile.dob);
-    // There was a typo here, user.state should be userProfile.state
     return `
       Income: ${userProfile.income}
       Occupation: ${userProfile.occupation}
