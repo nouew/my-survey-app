@@ -2,7 +2,7 @@
 "use server";
 
 import { db } from "@/lib/firebase";
-import { doc, setDoc, getDocs, collection } from "firebase/firestore";
+import { doc, setDoc, getDocs, collection, query, limit, getCountFromServer } from "firebase/firestore";
 import type { ProfileData } from "@/lib/data";
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 
@@ -44,7 +44,9 @@ export async function createUserRecord(uid: string, email: string | null) {
     userData.isAdmin = true;
   }
   
-  await setDoc(userDocRef, userData);
+  // Using setDoc with merge: false ensures we create a new document or completely overwrite an existing one.
+  // This is safer for creating users as it avoids merging with old data.
+  await setDoc(userDocRef, userData, { merge: false });
   console.log(`Created/updated Firestore record for user: ${uid}. Admin status: ${isAdmin}`);
 }
 

@@ -55,22 +55,34 @@ export default function Home() {
             const data = userDoc.data() as UserData;
             setUserData(data);
 
+            // **REDIRECT LOGIC**
+            // 1. If user is admin, redirect to admin page immediately.
+            if (data.isAdmin) {
+                router.push('/admin');
+                return;
+            }
+
+            // 2. If user is inactive, block them.
             if (data.status === 'inactive') {
               router.push('/blocked');
               return;
             }
             
+            // 3. If user is active but device doesn't match, block them.
             const currentDeviceId = await getDeviceId();
             if (data.status === 'active' && data.deviceId && data.deviceId !== currentDeviceId) {
               router.push('/blocked?reason=device_mismatch');
               return;
             }
+            
+            // 4. If all checks pass, stop loading and show the main page.
+            setLoading(false);
+
           } else {
+             // If user exists in Auth but not in Firestore, they are blocked.
              router.push('/blocked');
              return;
           }
-
-          setLoading(false);
 
         } catch (error) {
             console.error("Error verifying user status:", error);
@@ -78,6 +90,7 @@ export default function Home() {
         }
 
       } else {
+        // No user is logged in, redirect to login page.
         router.push('/login');
       }
     });
@@ -92,6 +105,7 @@ export default function Home() {
     }
 
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   useEffect(() => {
@@ -112,7 +126,7 @@ export default function Home() {
 
   const t = translations[lang];
 
-  if (loading && auth) {
+  if (loading || userData?.isAdmin) {
     return (
        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
          <div className="w-full max-w-7xl space-y-8">
