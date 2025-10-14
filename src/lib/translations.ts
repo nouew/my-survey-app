@@ -6,6 +6,52 @@ export const translations = {
   en: {
     appName: "Global Survey Assistant",
     footer: "All rights reserved.",
+    auth: {
+        loginTitle: "Welcome Back",
+        loginDescription: "Sign in to access your assistant.",
+        emailLabel: "Email",
+        passwordLabel: "Password",
+        loginButton: "Login",
+        googleLogin: "Sign in with Google",
+        noAccount: "Don't have an account?",
+        signupLink: "Sign up",
+        signupTitle: "Create an Account",
+        signupDescription: "Get started by creating a new account.",
+        signupButton: "Create Account",
+        haveAccount: "Already have an account?",
+        loginLink: "Login",
+        logout: "Logout",
+        errors: {
+            "auth/invalid-email": "Invalid email format.",
+            "auth/user-not-found": "No account found with this email.",
+            "auth/wrong-password": "Incorrect password. Please try again.",
+            "auth/email-already-in-use": "This email is already registered.",
+            "auth/weak-password": "Password should be at least 6 characters.",
+            "auth/too-many-requests": "Access temporarily disabled due to too many failed login attempts. Please reset your password or try again later.",
+            "default": "An unknown error occurred. Please try again."
+        },
+        blocked: {
+          title: "Account Pending Activation",
+          description: "Your account has been created successfully. To gain full access, please contact support to activate your account and complete the payment process.",
+          contactSupport: "Contact Support",
+          deviceMismatchTitle: "Account Access Restricted",
+          deviceMismatchDescription: "For security, your account is locked to the device it was first activated on. To use a new device, please contact support."
+        },
+        admin: {
+          title: "Admin Panel",
+          description: "Manage user accounts and activations.",
+          user: "User",
+          email: "Email",
+          status: "Status",
+          deviceId: "Bound Device ID",
+          actions: "Actions",
+          activate: "Activate",
+          active: "Active",
+          inactive: "Inactive",
+          noUsers: "No users have registered yet.",
+          noDeviceId: "Not bound yet"
+        }
+    },
     profile: {
       title: "Assistant Profile",
       description: "Keep your profile updated for the most accurate survey assistance.",
@@ -87,6 +133,52 @@ export const translations = {
   ar: {
     appName: "مساعد الاستبيانات العالمي",
     footer: "كل الحقوق محفوظة.",
+    auth: {
+      loginTitle: "أهلاً بعودتك",
+      loginDescription: "سجل الدخول للوصول إلى مساعدك.",
+      emailLabel: "البريد الإلكتروني",
+      passwordLabel: "كلمة المرور",
+      loginButton: "تسجيل الدخول",
+      googleLogin: "الدخول باستخدام جوجل",
+      noAccount: "ليس لديك حساب؟",
+      signupLink: "أنشئ حساباً",
+      signupTitle: "إنشاء حساب جديد",
+      signupDescription: "ابدأ بإنشاء حساب جديد.",
+      signupButton: "إنشاء حساب",
+      haveAccount: "لديك حساب بالفعل؟",
+      loginLink: "تسجيل الدخول",
+      logout: "تسجيل الخروج",
+      errors: {
+        "auth/invalid-email": "صيغة البريد الإلكتروني غير صالحة.",
+        "auth/user-not-found": "لا يوجد حساب مسجل بهذا البريد الإلكتروني.",
+        "auth/wrong-password": "كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.",
+        "auth/email-already-in-use": "هذا البريد الإلكتروني مسجل بالفعل.",
+        "auth/weak-password": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
+        "auth/too-many-requests": "تم تعطيل الوصول مؤقتًا بسبب كثرة محاولات تسجيل الدخول الفاشلة. يرجى إعادة تعيين كلمة المرور أو المحاولة مرة أخرى لاحقًا.",
+        "default": "حدث خطأ غير معروف. يرجى المحاولة مرة أخرى."
+      },
+      blocked: {
+        title: "الحساب في انتظار التفعيل",
+        description: "تم إنشاء حسابك بنجاح. للحصول على الوصول الكامل، يرجى التواصل مع الدعم لتفعيل حسابك وإتمام عملية الدفع.",
+        contactSupport: "تواصل مع الدعم",
+        deviceMismatchTitle: "الوصول إلى الحساب مقيد",
+        deviceMismatchDescription: "لأسباب أمنية، حسابك مرتبط بالجهاز الذي تم تفعيله منه أول مرة. لاستخدام جهاز جديد، يرجى التواصل مع الدعم."
+      },
+      admin: {
+        title: "لوحة التحكم الإدارية",
+        description: "إدارة حسابات المستخدمين والتفعيلات.",
+        user: "المستخدم",
+        email: "البريد الإلكتروني",
+        status: "الحالة",
+        deviceId: "معرّف الجهاز المربوط",
+        actions: "الإجراءات",
+        activate: "تفعيل",
+        active: "نشط",
+        inactive: "غير نشط",
+        noUsers: "لم يسجل أي مستخدم بعد.",
+        noDeviceId: "غير مربوط بعد"
+      }
+    },
     profile: {
       title: "ملف المساعد",
       description: "حافظ على تحديث ملفك الشخصي للحصول على أدق مساعدة في الاستبيانات.",

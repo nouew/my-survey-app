@@ -4,6 +4,95 @@
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 import type { ProfileData } from "@/lib/data";
 
+// =================================================================
+// In-memory database for user status and device binding
+// In a real production app, you MUST use a persistent database like Firestore.
+// =================================================================
+interface UserRecord {
+  uid: string;
+  email: string | null;
+  status: 'active' | 'inactive';
+  deviceId: string | null; // Will store the first device ID upon activation
+}
+
+const userDatabase: { [uid: string]: UserRecord } = {};
+
+// Helper function to get a unique device identifier from request headers
+async function getDeviceId(): Promise<string> {
+    const { headers } = await import('next/headers');
+    const userAgent = headers().get('user-agent') || 'unknown';
+    const ip = headers().get('x-forwarded-for') || 'unknown-ip';
+    // Simple hash for demonstration. In production, consider a more robust hashing algorithm.
+    const deviceId = `${userAgent}-${ip}`; 
+    return deviceId;
+}
+
+// Action to create a user record in our "database"
+export async function createUserRecord(uid: string, email: string | null) {
+  if (!userDatabase[uid]) {
+    userDatabase[uid] = {
+      uid,
+      email,
+      status: 'inactive', // All new users are inactive by default
+      deviceId: null,
+    };
+    console.log(`Created record for user: ${uid}`);
+  }
+}
+
+// Action to get a user's status
+export async function getUserStatus(uid: string): Promise<{ status: 'active' | 'inactive' | 'not_found' }> {
+  const user = userDatabase[uid];
+  return { status: user ? user.status : 'not_found' };
+}
+
+// Action to verify a device and bind it if necessary
+export async function verifyDevice(uid: string): Promise<{ isVerified: boolean }> {
+    const user = userDatabase[uid];
+    if (!user) return { isVerified: false };
+    
+    // If user is inactive, device check is irrelevant.
+    if (user.status === 'inactive') return { isVerified: true }; 
+
+    const currentDeviceId = await getDeviceId();
+
+    // If user is active but has no deviceId, this is their first login post-activation. Bind the device.
+    if (user.status === 'active' && !user.deviceId) {
+        user.deviceId = currentDeviceId;
+        console.log(`Device bound for user ${uid}: ${currentDeviceId}`);
+        return { isVerified: true };
+    }
+
+    // If user is active and has a deviceId, check for a match.
+    if (user.deviceId === currentDeviceId) {
+        return { isVerified: true };
+    }
+
+    // Device mismatch.
+    console.warn(`Device mismatch for user ${uid}. Expected ${user.deviceId}, got ${currentDeviceId}`);
+    return { isVerified: false };
+}
+
+
+// Admin actions
+export async function getAllUsers(): Promise<UserRecord[]> {
+  // In a real app, you would add authentication to ensure only an admin can call this.
+  return Object.values(userDatabase);
+}
+
+export async function activateUser(uid: string): Promise<{ success: boolean }> {
+  // In a real app, you would add authentication to ensure only an admin can call this.
+  const user = userDatabase[uid];
+  if (user) {
+    user.status = 'active';
+    console.log(`Activated user: ${uid}`);
+    return { success: true };
+  }
+  return { success: false };
+}
+
+// --- Original Actions ---
+
 interface ActionResult {
   answer?: string;
   error?: string;

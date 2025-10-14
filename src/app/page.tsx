@@ -2,36 +2,60 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Flame, BookMarked, BookOpen } from "lucide-react";
+import { useRouter } from 'next/navigation';
+import { getAuth, onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { app } from "@/lib/firebase";
+import { Flame, BookMarked, BookOpen, LogOut } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { translations, Language, Direction } from "@/lib/translations";
 import { ManualAssistantPage } from "@/components/manual-assistant-page";
 import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getUserStatus, verifyDevice } from "./actions";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const auth = getAuth(app);
 
 export default function Home() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Language>("ar");
   const [dir, setDir] = useState<Direction>("rtl");
-  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUser(user);
+        const { status } = await getUserStatus(user.uid);
+        const { isVerified } = await verifyDevice(user.uid);
+        
+        if (status === 'inactive') {
+          router.push('/blocked');
+        } else if (!isVerified) {
+           router.push('/blocked?reason=device_mismatch');
+        } else {
+          setLoading(false);
+        }
+      } else {
+        router.push('/login');
+      }
+    });
 
     if (typeof window !== "undefined") {
-      // On initial load, check local storage for saved language
       const storedLang = (localStorage.getItem("global_insights_lang") as Language) || "ar";
       setLang(storedLang);
-      
       const newDir = storedLang === "ar" ? "rtl" : "ltr";
       document.documentElement.lang = storedLang;
       document.documentElement.dir = newDir;
       setDir(newDir);
     }
-  }, []);
+
+    return () => unsubscribe();
+  }, [router]);
 
   useEffect(() => {
-    // This effect runs when `lang` changes
     if (typeof window !== "undefined") {
       const newDir = lang === "ar" ? "rtl" : "ltr";
       document.documentElement.lang = lang;
@@ -41,10 +65,30 @@ export default function Home() {
     }
   }, [lang]);
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
+
   const t = translations[lang];
 
-  if (!isClient) {
-    return null; // or a loading skeleton
+  if (loading || !user) {
+    return (
+       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
+         <div className="w-full max-w-7xl space-y-8">
+            <Skeleton className="h-12 w-1/2" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-1 space-y-4">
+                    <Skeleton className="h-64 w-full" />
+                </div>
+                <div className="lg:col-span-2 space-y-4">
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-96 w-full" />
+                </div>
+            </div>
+         </div>
+       </div>
+    );
   }
   
   return (
@@ -67,6 +111,9 @@ export default function Home() {
                     <BookMarked className="h-5 w-5" />
                 </Button>
             </Link>
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label={t.auth.logout}>
+              <LogOut className="h-5 w-5" />
+            </Button>
             <LanguageToggle lang={lang} setLang={setLang} />
             <ThemeToggle />
           </div>
@@ -82,4 +129,3 @@ export default function Home() {
       </div>
   );
 }
-
