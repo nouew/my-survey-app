@@ -62,21 +62,22 @@ export async function signInUser(username: string, password: string): Promise<Au
     const userDocRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
 
-    if (!userDoc.exists()) {
-      await setDoc(userDocRef, {
-        id: username.toLowerCase().trim(),
-        uid: user.uid,
-        status: 'inactive'
-      });
-       return { status: 'pending', message: 'Your account is pending activation by an administrator.' };
+    if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.status === 'active') {
+            return { status: 'success', message: 'Login successful.', uid: user.uid };
+        } else {
+            return { status: 'pending', message: 'Your account has not been activated by an administrator.' };
+        }
+    } else {
+        // This is a fallback case in case the doc wasn't created on signup.
+        await setDoc(userDocRef, {
+            id: username.toLowerCase().trim(),
+            uid: user.uid,
+            status: 'inactive'
+        });
+        return { status: 'pending', message: 'Your account is pending activation by an administrator.' };
     }
-
-    const userData = userDoc.data();
-    if (userData.status !== 'active') {
-      return { status: 'pending', message: 'Your account has not been activated by an administrator.' };
-    }
-
-    return { status: 'success', message: 'Login successful.', uid: user.uid };
 
   } catch (error: any) {
     console.error("Error in signInUser:", error.message);
