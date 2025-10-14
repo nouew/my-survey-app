@@ -2,8 +2,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
+import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
+import { app, db } from "@/lib/firebase";
 import {
   Table,
   TableBody,
@@ -17,13 +18,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { translations, Language } from "@/lib/translations";
-import { Flame, ShieldCheck, UserCog } from "lucide-react";
+import { Flame, ShieldCheck, UserCog, AlertTriangle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 interface UserRecord {
   uid: string;
   email: string | null;
   status: 'active' | 'inactive';
   deviceId: string | null;
+  isAdmin?: boolean;
 }
 
 async function getDeviceId(): Promise<string> {
@@ -34,33 +38,47 @@ async function getDeviceId(): Promise<string> {
 export default function AdminPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>('ar');
   const { toast } = useToast();
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (adminUser: User) => {
     if (!db) {
         toast({ variant: "destructive", title: "Firebase Error", description: "Firestore is not configured." });
         setIsLoading(false);
         return;
     }
-    setIsLoading(true);
+
     try {
-        const usersCollection = collection(db, "users");
-        const querySnapshot = await getDocs(usersCollection);
-        const userList: UserRecord[] = [];
-        querySnapshot.forEach((doc) => {
-            userList.push(doc.data() as UserRecord);
-        });
-        setUsers(userList);
+        // Step 1: Verify if the current user is an admin by checking their document.
+        const adminDocRef = doc(db, "users", adminUser.uid);
+        const adminDoc = await getDoc(adminDocRef);
+
+        if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
+            setIsAdmin(true);
+
+            // Step 2: If they are an admin, fetch all users.
+            const usersCollection = collection(db, "users");
+            const querySnapshot = await getDocs(usersCollection);
+            const userList: UserRecord[] = [];
+            querySnapshot.forEach((doc) => {
+                // Ensure we don't list the admin themselves if they don't have an email (edge case)
+                if(doc.data().email) {
+                  userList.push(doc.data() as UserRecord);
+                }
+            });
+            // Filter out the current admin from the list to not show them
+            setUsers(userList.filter(u => u.uid !== adminUser.uid));
+        } else {
+            setError(translations[lang].auth.admin.notAdmin);
+        }
     } catch (error: any) {
         console.error("Error fetching users:", error);
-        toast({
-            variant: "destructive",
-            title: "Permission Error",
-            description: "You may not have permission to view users. Check Firestore rules.",
-        });
+        setError(error.message || "An unexpected error occurred.");
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -71,7 +89,20 @@ export default function AdminPage() {
       document.documentElement.lang = storedLang;
       document.documentElement.dir = newDir;
     }
-    fetchUsers();
+    
+    if (app) {
+        const auth = getAuth(app);
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                fetchUsers(user);
+            } else {
+                // Not logged in, redirect or show error
+                setError("You must be logged in to view this page.");
+                setIsLoading(false);
+            }
+        });
+        return () => unsubscribe();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -90,7 +121,8 @@ export default function AdminPage() {
             title: "User Activated",
             description: `User ${uid} has been successfully activated.`,
         });
-        fetchUsers(); // Refresh the list
+        const auth = getAuth(app);
+        if(auth.currentUser) fetchUsers(auth.currentUser); // Refresh the list
     } catch (error: any) {
         console.error("Error activating user:", error);
         toast({
@@ -100,16 +132,44 @@ export default function AdminPage() {
         });
     }
   };
+  
+  if (!isAdmin && !isLoading) {
+    return (
+        <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
+             <header className="w-full max-w-7xl flex justify-between items-center mb-8">
+                <Link href="/" className="flex items-center gap-2 sm:gap-3">
+                    <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground font-headline">
+                        {t.appName}
+                    </h1>
+                </Link>
+            </header>
+            <main className="w-full max-w-5xl">
+                <Card className="border-destructive">
+                    <CardHeader>
+                        <div className="flex items-center gap-3 text-destructive">
+                            <AlertTriangle className="w-8 h-8"/>
+                            <div>
+                                <CardTitle className="text-2xl">{t.auth.admin.accessDenied}</CardTitle>
+                                <CardDescription className="text-destructive/80">{error || t.auth.admin.notAdmin}</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                </Card>
+            </main>
+        </div>
+    )
+  }
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
-      <header className="w-full max-w-7xl flex justify-between items-center mb-8">
-        <div className="flex items-center gap-2 sm:gap-3">
+       <header className="w-full max-w-7xl flex justify-between items-center mb-8">
+        <Link href="/" className="flex items-center gap-2 sm:gap-3">
           <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground font-headline">
             {t.appName}
           </h1>
-        </div>
+        </Link>
       </header>
        <main className="w-full max-w-5xl">
         <Card>
@@ -136,7 +196,13 @@ export default function AdminPage() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center h-24">Loading users...</TableCell>
+                                    <TableCell colSpan={4}>
+                                        <div className="space-y-2">
+                                            <Skeleton className="h-8 w-full" />
+                                            <Skeleton className="h-8 w-full" />
+                                            <Skeleton className="h-8 w-full" />
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
                             ) : users.length === 0 ? (
                                 <TableRow>

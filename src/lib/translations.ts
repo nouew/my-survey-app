@@ -49,7 +49,9 @@ export const translations = {
           active: "Active",
           inactive: "Inactive",
           noUsers: "No users have registered yet.",
-          noDeviceId: "Not bound yet"
+          noDeviceId: "Not bound yet",
+          notAdmin: "You do not have permission to view this page.",
+          accessDenied: "Access Denied"
         }
     },
     profile: {
@@ -176,7 +178,9 @@ export const translations = {
         active: "نشط",
         inactive: "غير نشط",
         noUsers: "لم يسجل أي مستخدم بعد.",
-        noDeviceId: "غير مربوط بعد"
+        noDeviceId: "غير مربوط بعد",
+        notAdmin: "ليس لديك الصلاحية لعرض هذه الصفحة.",
+        accessDenied: "تم رفض الوصول"
       }
     },
     profile: {

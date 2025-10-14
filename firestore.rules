@@ -1,29 +1,23 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is an admin
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
-    }
     
+    // A user can always read and update their own profile.
+    // They can create it if it doesn't exist.
     match /users/{userId} {
-      // READ: Users can read their own document. Admins can read any user document.
-      allow read: if request.auth.uid == userId || isAdmin();
-      
-      // CREATE: Any authenticated user can create their own document.
+      allow read, update: if request.auth.uid == userId;
       allow create: if request.auth.uid == userId;
+    }
 
-      // UPDATE: Only admins can update user documents (e.g., to activate them).
-      // A user cannot update their own document.
-      allow update: if isAdmin();
-      
-      // DELETE: Only admins can delete user documents.
-      allow delete: if isAdmin();
+    // A logged-in user who is an admin can read the full list of users.
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // LIST (for admin panel): Admins can list all documents in the 'users' collection.
+    // The list operation is on the collection.
     match /users/{document=**} {
       allow list: if isAdmin();
     }
