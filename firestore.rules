@@ -2,25 +2,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    //
-    // Rules for the 'users' collection.
-    //
     match /users/{userId} {
-      // Anyone can create a new user document (sign up).
-      allow create: if request.resource.data.id == userId &&
-                       request.resource.data.status == 'inactive' &&
-                       "uid" in request.resource.data;
+      // Allow user creation by anyone, but only if they are creating their own document.
+      // The userId in the path must match the UID from Firebase Auth.
+      allow create: if request.auth != null && request.auth.uid == userId;
 
-      // Anyone can read user documents (needed for login and checking if username exists).
-      allow read: if true;
+      // Allow a user to read their own document.
+      // Allow an admin to read any user document.
+      allow read: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.id == 'admin');
+      
+      // Allow an admin to update the status of any user.
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.id == 'admin';
 
-      // Only an authenticated admin user can update a user's status.
-      // This is for activating/deactivating users.
-      allow update: if request.auth != null &&
-                       get(/databases/$(database)/documents/users/admin).data.uid == request.auth.token.uid &&
-                       request.resource.data.keys().hasOnly(['id', 'uid', 'status']);
-                       
-      // No one can delete user documents directly.
+      // Disallow deletion.
       allow delete: if false;
     }
   }

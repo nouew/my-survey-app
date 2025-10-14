@@ -1,94 +1,107 @@
 
 "use server";
 
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
-import { v4 as uuidv4 } from 'uuid';
-import { db } from '@/lib/firebase-client'; // Use client DB connection
+import { app, db } from '@/lib/firebase-client';
 
-interface UserActionResult {
-  status: 'created' | 'exists' | 'error';
-  message?: string;
-}
+const auth = getAuth(app);
 
-interface ValidationResult {
-  status: 'valid' | 'invalid' | 'inactive' | 'error';
+interface AuthResult {
+  status: 'success' | 'error' | 'pending';
   message: string;
+  uid?: string;
 }
 
-// Function to find a user by username or create a new one
-export async function findOrCreateUser(username: string): Promise<UserActionResult> {
-  if (username.toLowerCase() === 'admin') {
-     return { status: 'exists' };
-  }
-  
+// Helper to create a dummy email from a username
+const formatEmail = (username: string) => `${username.toLowerCase()}@survey-app.com`;
+
+// Function to create a new user
+export async function createUser(username: string, password: string): Promise<AuthResult> {
   const usersRef = collection(db, 'users');
-  const q = query(usersRef, where("id", "==", username));
+  const q = query(usersRef, where("id", "==", username.toLowerCase()));
   
   try {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      // User exists
-      return { status: 'exists' };
-    } else {
-      // User does not exist, create a new one
-      const newUserUid = uuidv4();
-      const userDocRef = doc(db, 'users', username);
-      await setDoc(userDocRef, {
-        id: username,
-        uid: newUserUid, // This is the activation key
-        status: 'inactive'
-      });
-      return { status: 'created' };
+      return { status: 'error', message: 'Username already exists.' };
     }
+
+    const userCredential = await createUserWithEmailAndPassword(auth, formatEmail(username), password);
+    const user = userCredential.user;
+
+    // Create user document in Firestore
+    const userDocRef = doc(db, 'users', user.uid);
+    await setDoc(userDocRef, {
+      id: username,
+      email: user.email,
+      status: 'inactive'
+    });
+
+    return { status: 'pending', message: 'Account created. Awaiting admin activation.' };
+
   } catch (error: any) {
-    console.error("Error in findOrCreateUser:", error.message);
-    if (error.code === 'permission-denied') {
-        return { status: 'error', message: 'Permission denied. Check your Firestore security rules.' };
+    console.error("Error in createUser:", error.message);
+    if (error.code === 'auth/email-already-in-use') {
+      return { status: 'error', message: 'This username is already taken.' };
     }
-    return { status: 'error', message: 'An unexpected error occurred on the server.' };
+    if (error.code === 'auth/weak-password') {
+      return { status: 'error', message: 'Password should be at least 6 characters.' };
+    }
+    return { status: 'error', message: 'An unexpected error occurred.' };
   }
 }
 
-// Function to validate the activation key for a given username
-export async function validateActivationKey(username: string, activationKey: string): Promise<ValidationResult> {
-    
-    // Handle admin login separately
-    if (username.toLowerCase() === 'admin' && activationKey === process.env.ADMIN_ACTIVATION_KEY) {
-        const adminRef = doc(db, 'users', 'admin');
-        const adminDoc = await getDoc(adminRef);
-        if (!adminDoc.exists()) {
-             await setDoc(adminRef, { id: 'admin', uid: activationKey, status: 'active' });
-        }
-        return { status: 'valid', message: 'Admin login successful.' };
-    }
-
-
-  const userDocRef = doc(db, 'users', username);
-
+// Function to sign in a user
+export async function signInUser(username: string, password: string): Promise<AuthResult> {
   try {
+    const userCredential = await signInWithEmailAndPassword(auth, formatEmail(username), password);
+    const user = userCredential.user;
+
+    const userDocRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
 
     if (!userDoc.exists()) {
-      return { status: 'invalid', message: 'Username not found.' };
+      // This is a fallback case, should not happen in normal flow
+      await setDoc(userDocRef, {
+        id: username,
+        email: user.email,
+        status: 'inactive'
+      });
+       return { status: 'pending', message: 'Your account is pending activation by an administrator.' };
     }
 
     const userData = userDoc.data();
-
-    if (userData.uid !== activationKey) {
-      return { status: 'invalid', message: 'Invalid activation key.' };
-    }
-    
     if (userData.status !== 'active') {
-        return { status: 'inactive', message: 'This account has not been activated by an administrator.' };
+      return { status: 'pending', message: 'Your account has not been activated by an administrator.' };
     }
 
-    // If key is valid and status is active
-    return { status: 'valid', message: 'Login successful.' };
+    return { status: 'success', message: 'Login successful.', uid: user.uid };
+
   } catch (error: any) {
-    console.error("Error in validateActivationKey:", error.message);
-     if (error.code === 'permission-denied') {
-        return { status: 'error', message: 'Permission denied. Check your Firestore security rules.' };
+    console.error("Error in signInUser:", error.message);
+    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      return { status: 'error', message: 'Invalid username or password.' };
     }
-    return { status: 'error', message: 'An unexpected error occurred during validation.' };
+    return { status: 'error', message: 'An unexpected error occurred.' };
   }
+}
+
+// This function can be used on the main page to validate the session
+export async function validateSession(uid: string): Promise<{ status: 'valid' | 'invalid' }> {
+    if (!uid) {
+        return { status: 'invalid' };
+    }
+    try {
+        const userDocRef = doc(db, 'users', uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists() && userDoc.data().status === 'active') {
+            return { status: 'valid' };
+        } else {
+            return { status: 'invalid' };
+        }
+    } catch (error) {
+        return { status: 'invalid' };
+    }
 }

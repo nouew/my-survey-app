@@ -3,24 +3,22 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase-client';
-import { collection, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, getDoc, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ShieldCheck, ShieldOff, ClipboardCopy, Home } from 'lucide-react';
+import { Loader2, ShieldCheck, ShieldOff, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { getCookie } from 'cookies-next';
 
 interface User {
-  id: string;
-  uid: string;
+  id: string; // This is the username
+  uid: string; // This is the doc ID
   status: 'active' | 'inactive';
+  email: string;
 }
-
-// Hardcoded admin username
-const ADMIN_USERNAME = 'admin';
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -32,24 +30,11 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAdmin = async () => {
         const username = getCookie('username');
-        if (username !== ADMIN_USERNAME) {
+        if (username?.toLowerCase() !== 'admin') {
             router.push('/login');
             return;
         }
-
-        const activationKey = getCookie('activationKey');
-        const adminRef = doc(db, 'users', ADMIN_USERNAME);
-        try {
-            const adminDoc = await getDoc(adminRef);
-            if (adminDoc.exists() && adminDoc.data().uid === activationKey && adminDoc.data().status === 'active') {
-                setIsAdmin(true);
-            } else {
-                router.push('/login');
-            }
-        } catch (error) {
-            console.error("Error checking admin status:", error);
-            router.push('/login');
-        }
+        setIsAdmin(true);
     };
 
     checkAdmin();
@@ -59,28 +44,31 @@ export default function AdminPage() {
     if (!isAdmin) return;
 
     const usersRef = collection(db, 'users');
-    const unsubscribe = onSnapshot(usersRef, (snapshot) => {
-      const usersData: User[] = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as User))
-        .filter(user => user.id !== ADMIN_USERNAME); // Exclude admin from the list
+    const q = query(usersRef, where("id", "!=", "admin")); // Exclude admin from the list
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const usersData: User[] = snapshot.docs.map(doc => ({
+        uid: doc.id,
+        ...doc.data()
+      } as User));
       setUsers(usersData);
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching users:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch users.' });
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [isAdmin]);
+  }, [isAdmin, toast]);
 
-  const toggleUserStatus = async (username: string, currentStatus: 'active' | 'inactive') => {
-    const userRef = doc(db, 'users', username);
+  const toggleUserStatus = async (uid: string, currentStatus: 'active' | 'inactive') => {
+    const userRef = doc(db, 'users', uid);
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     try {
       await updateDoc(userRef, { status: newStatus });
       toast({
         title: `User ${newStatus === 'active' ? 'Activated' : 'Deactivated'}`,
-        description: `Username: ${username}`,
       });
     } catch (error) {
       console.error("Error updating user status:", error);
@@ -90,14 +78,6 @@ export default function AdminPage() {
         description: 'Could not update user status.',
       });
     }
-  };
-
-  const copyUid = (uid: string) => {
-    navigator.clipboard.writeText(uid);
-    toast({
-      title: 'Copied to Clipboard!',
-      description: 'The user\'s activation key (UID) has been copied.',
-    });
   };
   
   if (!isAdmin) {
@@ -132,7 +112,6 @@ export default function AdminPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Username</TableHead>
-                  <TableHead>Activation Key (UID)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -140,16 +119,8 @@ export default function AdminPage() {
               <TableBody>
                 {users.length > 0 ? (
                   users.map((user) => (
-                    <TableRow key={user.id}>
+                    <TableRow key={user.uid}>
                       <TableCell className="font-medium">{user.id}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                           <span className="font-mono text-sm">{user.uid.substring(0,10)}...</span>
-                           <Button variant="ghost" size="icon" onClick={() => copyUid(user.uid)}>
-                               <ClipboardCopy className="h-4 w-4" />
-                           </Button>
-                        </div>
-                      </TableCell>
                       <TableCell>
                         <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
                           {user.status}
@@ -159,7 +130,7 @@ export default function AdminPage() {
                         <Button
                           size="sm"
                           variant={user.status === 'active' ? 'destructive' : 'default'}
-                          onClick={() => toggleUserStatus(user.id, user.status)}
+                          onClick={() => toggleUserStatus(user.uid, user.status)}
                         >
                             {user.status === 'active' ? (
                                 <ShieldOff className="me-2 h-4 w-4" />
@@ -173,7 +144,7 @@ export default function AdminPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center">
+                    <TableCell colSpan={3} className="text-center">
                       No users have registered yet.
                     </TableCell>
                   </TableRow>
@@ -186,4 +157,3 @@ export default function AdminPage() {
     </div>
   );
 }
-

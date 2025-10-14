@@ -10,7 +10,7 @@ import { ManualAssistantPage } from "@/components/manual-assistant-page";
 import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { deleteCookie, getCookie } from 'cookies-next';
+import { deleteCookie } from 'cookies-next';
 
 interface MainAppProps {
     username: string;
@@ -20,7 +20,7 @@ export function MainApp({ username }: MainAppProps) {
   const [lang, setLang] = useState<Language>("ar");
   const [dir, setDir] = useState<Direction>("rtl");
   const router = useRouter();
-  const isAdmin = username === 'admin';
+  const isAdmin = username.toLowerCase() === 'admin';
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -45,7 +45,7 @@ export function MainApp({ username }: MainAppProps) {
 
   const handleLogout = () => {
     deleteCookie('username');
-    deleteCookie('activationKey');
+    deleteCookie('uid');
     router.push('/login');
   };
 

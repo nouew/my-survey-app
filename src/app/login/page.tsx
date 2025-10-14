@@ -10,28 +10,49 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, AlertCircle, KeyRound, User } from "lucide-react";
-import { findOrCreateUser, validateActivationKey } from '@/app/actions';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, AlertCircle, KeyRound, User, AtSign } from "lucide-react";
+import { createUser, signInUser } from '@/app/actions';
 import { setCookie } from 'cookies-next';
 import { translations, Language, Direction } from "@/lib/translations";
 import { LanguageToggle } from '@/components/language-toggle';
 
-type Stage = 'username' | 'activate' | 'pending';
+const loginSchema = z.object({
+  username: z.string().min(3, 'Username must be at least 3 characters.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
+});
+
+const signupSchema = z.object({
+  username: z.string().min(3, 'Username must be at least 3 characters.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 
 export default function LoginPage() {
   const router = useRouter();
-  const [stage, setStage] = useState<Stage>('username');
-  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Language and direction state
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>("ar");
   const [dir, setDir] = useState<Direction>("rtl");
 
   const t = translations[lang];
 
+  const loginForm = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: '', password: '' },
+  });
+
+  const signupForm = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { username: '', password: '', confirmPassword: '' },
+  });
+  
   const handleLangChange = (newLang: Language) => {
     setLang(newLang);
     const newDir = newLang === "ar" ? "rtl" : "ltr";
@@ -41,175 +62,181 @@ export default function LoginPage() {
       document.documentElement.dir = newDir;
     }
   };
-  
-  const usernameSchema = z.object({
-    username: z.string().min(3, { message: 'Username must be at least 3 characters.' }),
-  });
 
-  const activationSchema = z.object({
-    activationKey: z.string().min(1, { message: 'Activation key is required.' }),
-  });
-
-  const usernameForm = useForm<z.infer<typeof usernameSchema>>({
-    resolver: zodResolver(usernameSchema),
-    defaultValues: { username: '' },
-  });
-
-  const activationForm = useForm<z.infer<typeof activationSchema>>({
-    resolver: zodResolver(activationSchema),
-    defaultValues: { activationKey: '' },
-  });
-
-  const onUsernameSubmit = async (data: z.infer<typeof usernameSchema>) => {
+  const onLoginSubmit = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     setError(null);
-    setUsername(data.username); // Set username for all stages
-    const result = await findOrCreateUser(data.username);
-    if (result.status === 'exists') {
-      setStage('activate');
-    } else if (result.status === 'created') {
-      setStage('pending');
+    setPendingMessage(null);
+    const result = await signInUser(data.username, data.password);
+    
+    if (result.status === 'success') {
+      const isAdmin = data.username.toLowerCase() === 'admin';
+      setCookie('username', data.username, { maxAge: 60 * 60 * 24 * 30 }); // 30 days
+      setCookie('uid', result.uid!, { maxAge: 60 * 60 * 24 * 30 });
+      router.push(isAdmin ? '/admin' : '/');
+    } else if (result.status === 'pending') {
+      setPendingMessage(result.message);
     } else {
       setError(result.message);
     }
     setIsLoading(false);
   };
 
-  const onActivationSubmit = async (data: z.infer<typeof activationSchema>) => {
+  const onSignupSubmit = async (data: z.infer<typeof signupSchema>) => {
     setIsLoading(true);
     setError(null);
-    const result = await validateActivationKey(username, data.activationKey);
-    if (result.status === 'valid') {
-      // Set cookies and redirect
-      const isAdmin = username.toLowerCase() === 'admin';
-      setCookie('username', username, { maxAge: 60 * 60 * 24 * 30 }); // 30 days
-      setCookie('activationKey', data.activationKey, { maxAge: 60 * 60 * 24 * 30 });
-      router.push(isAdmin ? '/admin' : '/');
+    setPendingMessage(null);
+
+    const result = await createUser(data.username, data.password);
+    if (result.status === 'pending') {
+        setPendingMessage(result.message);
     } else {
-      setError(result.message);
-      setIsLoading(false);
+        setError(result.message);
     }
+    setIsLoading(false);
   };
+  
+  const clearMessages = () => {
+      setError(null);
+      setPendingMessage(null);
+  }
 
   return (
     <div dir={dir} className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-       <div className="absolute top-4 end-4">
+      <div className="absolute top-4 end-4">
         <LanguageToggle lang={lang} setLang={handleLangChange} />
-       </div>
+      </div>
 
-      {stage === 'username' && (
-        <Card className="w-full max-w-sm">
-          <Form {...usernameForm}>
-            <form onSubmit={usernameForm.handleSubmit(onUsernameSubmit)}>
-              <CardHeader className="text-center">
-                <CardTitle>{t.auth.loginTitle}</CardTitle>
-                <CardDescription>{t.auth.loginDescription}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={usernameForm.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.auth.usernameLabel}</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder={t.auth.usernamePlaceholder} {...field} className="ps-10" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                  {t.auth.continue}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
-        </Card>
-      )}
-
-      {stage === 'activate' && (
-        <Card className="w-full max-w-sm">
-          <Form {...activationForm}>
-            <form onSubmit={activationForm.handleSubmit(onActivationSubmit)}>
-              <CardHeader className="text-center">
-                <CardTitle>{t.auth.activationTitle}</CardTitle>
-                <CardDescription>{t.auth.activationDescription} ({username})</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={activationForm.control}
-                  name="activationKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.auth.activationKeyLabel}</FormLabel>
-                      <FormControl>
-                         <div className="relative">
-                          <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder={t.auth.activationKeyPlaceholder} {...field} className="ps-10" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-              <CardFooter className="flex flex-col gap-4">
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                  {t.auth.loginButton}
-                </Button>
-                <Button variant="link" size="sm" onClick={() => { setStage('username'); setError(null); }}>
-                    {t.auth.backToUsername}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
-        </Card>
-      )}
-
-      {stage === 'pending' && (
-        <Card className="w-full max-w-sm">
-            <CardHeader className="text-center">
-                <AlertCircle className="mx-auto h-8 w-8 text-primary" />
-                <CardTitle>{t.auth.pendingActivationTitle}</CardTitle>
+      <Tabs defaultValue="login" className="w-full max-w-sm" onValueChange={clearMessages}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="login">Login</TabsTrigger>
+          <TabsTrigger value="signup">Sign Up</TabsTrigger>
+        </TabsList>
+        <TabsContent value="login">
+          <Card>
+            <CardHeader>
+              <CardTitle>Welcome Back</CardTitle>
+              <CardDescription>Enter your credentials to access your account.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <AlertDescription className="text-center">
-                  {t.auth.pendingActivationDescription}
-                </AlertDescription>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-2">
-                <Button variant="outline" className="w-full" onClick={() => {
-                    // Replace with actual support link
-                    window.location.href = "https://t.me/your-support-channel";
-                }}>
-                    {t.auth.contactSupport}
-                </Button>
-                <Button variant="link" className="w-full" onClick={() => setStage('activate')}>
-                    {t.auth.haveKey}
-                </Button>
-            </CardFooter>
-        </Card>
-      )}
+            <Form {...loginForm}>
+              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={loginForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="e.g. john-doe" {...field} className="ps-10" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input type="password" placeholder="••••••••" {...field} className="ps-10" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
+                   {pendingMessage && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>{pendingMessage}</AlertDescription></Alert>}
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                    Login
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </Card>
+        </TabsContent>
+        <TabsContent value="signup">
+          <Card>
+            <CardHeader>
+              <CardTitle>Create an Account</CardTitle>
+              <CardDescription>Enter a username and password to get started.</CardDescription>
+            </CardHeader>
+            <Form {...signupForm}>
+              <form onSubmit={signupForm.handleSubmit(onSignupSubmit)}>
+                <CardContent className="space-y-4">
+                   <FormField
+                    control={signupForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Choose a unique username" {...field} className="ps-10" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={signupForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                           <div className="relative">
+                            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input type="password" placeholder="6+ characters" {...field} className="ps-10" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={signupForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                           <div className="relative">
+                            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input type="password" placeholder="••••••••" {...field} className="ps-10" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
+                  {pendingMessage && <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>{pendingMessage}</AlertDescription></Alert>}
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                     {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                    Sign Up
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
