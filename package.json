@@ -57,7 +57,8 @@
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.24.2",
-    "firebase": "^10.12.4"
+    "firebase": "^10.12.4",
+    "firebase-admin": "^12.2.0"
   },
   "devDependencies": {
     "@types/node": "^20",

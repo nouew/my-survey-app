@@ -13,10 +13,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, AlertCircle, KeyRound, User } from "lucide-react";
-import { createUser, signInUser } from '@/app/actions';
+import { createUser, getCustomToken } from '@/app/actions';
 import { setCookie } from 'cookies-next';
 import { translations, Language, Direction } from "@/lib/translations";
 import { LanguageToggle } from '@/components/language-toggle';
+import { getAuth, signInWithEmailAndPassword, signInWithCustomToken } from 'firebase/auth';
+import { app } from '@/lib/firebase-client';
+
+const auth = getAuth(app);
 
 const loginSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters.'),
@@ -31,7 +35,6 @@ const signupSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
-
 
 export default function LoginPage() {
   const router = useRouter();
@@ -68,18 +71,39 @@ export default function LoginPage() {
     setError(null);
     setPendingMessage(null);
 
-    const result = await signInUser(data.username, data.password);
-    
-    if (result.status === 'success') {
-      setCookie('username', data.username.toLowerCase().trim(), { maxAge: 60 * 60 * 24 * 30 });
-      setCookie('uid', result.uid!, { maxAge: 60 * 60 * 24 * 30 });
-      router.push('/');
-    } else if (result.status === 'pending') {
-      setPendingMessage(result.message);
-    } else {
-      setError(result.message);
+    const cleanUsername = data.username.toLowerCase().trim();
+    const email = `${cleanUsername}@survey-app.com`;
+
+    try {
+      // Step 1: Verify password with client-side SDK
+      await signInWithEmailAndPassword(auth, email, data.password);
+
+      // Step 2: If password is correct, get a custom token from the server action
+      const result = await getCustomToken(data.username, data.password);
+
+      if (result.status === 'success') {
+          // Step 3: Sign in with the custom token on the client
+          const customToken = result.message;
+          await signInWithCustomToken(auth, customToken);
+          
+          setCookie('username', data.username.toLowerCase().trim(), { maxAge: 60 * 60 * 24 * 30 });
+          setCookie('uid', result.uid!, { maxAge: 60 * 60 * 24 * 30 });
+          router.push('/');
+      } else if (result.status === 'pending') {
+          setPendingMessage(result.message);
+      } else {
+          setError(result.message);
+      }
+    } catch (e: any) {
+        console.error("Login error:", e.code);
+        if(e.code === 'auth/invalid-credential'){
+            setError('Invalid username or password.');
+        } else {
+            setError('An unexpected error occurred during login.');
+        }
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const onSignupSubmit = async (data: z.infer<typeof signupSchema>) => {
