@@ -4,7 +4,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, signOut, type User, type Auth } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { app, db } from "@/lib/firebase";
 import { Flame, BookMarked, BookOpen, LogOut } from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { translations, Language, Direction } from "@/lib/translations";
@@ -12,8 +13,15 @@ import { ManualAssistantPage } from "@/components/manual-assistant-page";
 import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getUserStatus, verifyDevice } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
+
+async function getDeviceId(): Promise<string> {
+    // This function can only run on the client, so we can safely assume window is available.
+    const userAgent = window.navigator.userAgent || 'unknown';
+    // NOTE: IP address is not available on the client. We'll use user-agent as a simplified device ID.
+    // In a real production scenario, a more robust client-side fingerprinting library might be used.
+    return userAgent;
+}
 
 export default function Home() {
   const router = useRouter();
@@ -25,7 +33,7 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (!app) {
+    if (!app || !db) {
         setLoading(false); // If firebase is not configured, don't show loading screen
         return;
     };
@@ -35,16 +43,40 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
       if (user) {
         setUser(user);
-        const { status } = await getUserStatus(user.uid);
-        const { isVerified } = await verifyDevice(user.uid);
-        
-        if (status === 'inactive') {
-          router.push('/blocked');
-        } else if (!isVerified) {
-           router.push('/blocked?reason=device_mismatch');
-        } else {
+        // Fetch user status and verify device on the client
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (userData.status === 'inactive') {
+              router.push('/blocked');
+              return;
+            }
+            
+            // Device verification logic now on client
+            const currentDeviceId = await getDeviceId();
+            if (userData.status === 'active' && userData.deviceId && userData.deviceId !== currentDeviceId) {
+              router.push('/blocked?reason=device_mismatch');
+              return;
+            }
+          } else {
+             // This case might happen if document creation fails, direct to blocked.
+             router.push('/blocked');
+             return;
+          }
+
           setLoading(false);
+
+        } catch (error) {
+            console.error("Error verifying user status:", error);
+            // If we can't read the doc, it's a permissions issue or user is new.
+            // For a new user, the doc doesn't exist, which is fine, but they start as inactive.
+            // Let's redirect to blocked page as a safe fallback.
+             router.push('/blocked');
         }
+
       } else {
         router.push('/login');
       }

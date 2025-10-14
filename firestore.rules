@@ -1,27 +1,31 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Users Collection
     match /users/{userId} {
-      // Any authenticated user can create their own document.
-      allow create: if request.auth != null && request.auth.uid == userId;
+      // CREATE: Anyone can create their own user document.
+      allow create: if request.auth.uid == userId;
+      
+      // READ: A user can only read their own document.
+      allow read: if request.auth.uid == userId;
 
-      // Any authenticated user can read their own document.
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // LIST: No one can list all users from the client.
+      // This is important for security. Admin fetching should be done with care.
+      allow list: if false;
 
-      // Only an "admin" (which we don't have yet) should update.
-      // For now, let's allow a user to update their own deviceId.
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // UPDATE: A user can only update their own document.
+      allow update: if request.auth.uid == userId;
 
-      // No one can delete user documents for now.
-      allow delete: if false;
+      // DELETE: A user can delete their own document.
+      allow delete: if request.auth.uid == userId;
     }
 
-    // This is for the admin panel to be able to list all users.
-    // It's not perfectly secure, but it's a good start for this app.
-    match /users {
-        allow list: if request.auth != null;
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

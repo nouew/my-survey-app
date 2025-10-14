@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
   Table,
   TableBody,
@@ -13,7 +15,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getAllUsers, activateUser } from "../actions";
 import { useToast } from "@/hooks/use-toast";
 import { translations, Language } from "@/lib/translations";
 import { Flame, ShieldCheck, UserCog } from "lucide-react";
@@ -25,11 +26,42 @@ interface UserRecord {
   deviceId: string | null;
 }
 
+async function getDeviceId(): Promise<string> {
+    const userAgent = window.navigator.userAgent || 'unknown';
+    return userAgent;
+}
+
 export default function AdminPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lang, setLang] = useState<Language>('ar');
   const { toast } = useToast();
+
+  const fetchUsers = async () => {
+    if (!db) {
+        toast({ variant: "destructive", title: "Firebase Error", description: "Firestore is not configured." });
+        setIsLoading(false);
+        return;
+    }
+    setIsLoading(true);
+    try {
+        const usersCollection = collection(db, "users");
+        const querySnapshot = await getDocs(usersCollection);
+        const userList: UserRecord[] = [];
+        querySnapshot.forEach((doc) => {
+            userList.push(doc.data() as UserRecord);
+        });
+        setUsers(userList);
+    } catch (error: any) {
+        console.error("Error fetching users:", error);
+        toast({
+            variant: "destructive",
+            title: "Permission Error",
+            description: "You may not have permission to view users. Check Firestore rules.",
+        });
+    }
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -40,30 +72,31 @@ export default function AdminPage() {
       document.documentElement.dir = newDir;
     }
     fetchUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const t = translations[lang] || translations.ar;
 
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    const userList = await getAllUsers();
-    setUsers(userList);
-    setIsLoading(false);
-  };
-
   const handleActivate = async (uid: string) => {
-    const result = await activateUser(uid);
-    if (result.success) {
-      toast({
-        title: "User Activated",
-        description: `User ${uid} has been successfully activated.`,
-      });
-      fetchUsers(); // Refresh the list
-    } else {
+    if (!db) return;
+    try {
+        const userDocRef = doc(db, "users", uid);
+        const currentDeviceId = await getDeviceId();
+        await updateDoc(userDocRef, { 
+            status: 'active',
+            deviceId: currentDeviceId // Bind device on first activation
+        });
+        toast({
+            title: "User Activated",
+            description: `User ${uid} has been successfully activated.`,
+        });
+        fetchUsers(); // Refresh the list
+    } catch (error: any) {
+        console.error("Error activating user:", error);
         toast({
             variant: "destructive",
             title: "Activation Failed",
-            description: `Could not activate user ${uid}.`,
+            description: `Could not activate user ${uid}. Check permissions.`,
         });
     }
   };

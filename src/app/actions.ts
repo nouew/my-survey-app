@@ -2,118 +2,37 @@
 "use server";
 
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import type { ProfileData } from "@/lib/data";
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 
-// =================================================================
-// Firestore-based database for user status and device binding
-// =================================================================
-interface UserRecord {
-  uid: string;
-  email: string | null;
-  status: 'active' | 'inactive';
-  deviceId: string | null;
-}
+// This file will now only contain server actions that DO NOT require Firebase Auth context,
+// like the Genkit AI calls. User management actions are moved to the client.
 
-const usersCollection = collection(db, "users");
-
-// Helper function to get a unique device identifier from request headers
-async function getDeviceId(): Promise<string> {
+async function getDeviceIdFromHeaders(): Promise<string> {
     const { headers } = await import('next/headers');
     const userAgent = headers().get('user-agent') || 'unknown';
-    const ip = headers().get('x-forwarded-for') || 'unknown-ip';
-    // Simple hash for demonstration. In a production, consider a more robust hashing algorithm.
-    const deviceId = `${userAgent}-${ip}`; 
-    return deviceId;
+    return userAgent;
 }
 
-// Action to create a user record in Firestore
 export async function createUserRecord(uid: string, email: string | null) {
+  if (!db) {
+    console.error("Firestore not initialized for createUserRecord");
+    return;
+  }
   const userDocRef = doc(db, "users", uid);
-  // The original check 'getDoc' was causing a permission error.
-  // By using setDoc directly, we rely on the 'create' security rule,
-  // which is correctly configured to allow a user to create their own document.
+  // We use setDoc which will either create the doc or overwrite it.
+  // This is safe because our Firestore rules only allow a user to write to their own doc.
   await setDoc(userDocRef, {
     uid,
     email,
-    status: 'inactive', // All new users are inactive by default
-    deviceId: null,
+    status: 'inactive',
+    deviceId: null, // Device ID will be bound on first activation by an admin
   });
-  console.log(`Created Firestore record for user: ${uid}`);
+  console.log(`Created/updated Firestore record for user: ${uid}`);
 }
 
-// Action to get a user's status from Firestore
-export async function getUserStatus(uid: string): Promise<{ status: 'active' | 'inactive' | 'not_found' }> {
-  if (!db) return { status: 'not_found' };
-  const userDocRef = doc(db, "users", uid);
-  const userDoc = await getDoc(userDocRef);
-  
-  if (userDoc.exists()) {
-    return { status: userDoc.data().status || 'not_found' };
-  }
-  return { status: 'not_found' };
-}
-
-// Action to verify a device and bind it if necessary
-export async function verifyDevice(uid: string): Promise<{ isVerified: boolean }> {
-    if (!db) return { isVerified: false };
-    const userDocRef = doc(db, "users", uid);
-    const userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists()) return { isVerified: false };
-    
-    const user = userDoc.data() as UserRecord;
-
-    // If user is inactive, device check is irrelevant for now.
-    if (user.status === 'inactive') return { isVerified: true }; 
-
-    const currentDeviceId = await getDeviceId();
-
-    // If user is active but has no deviceId, this is their first login post-activation. Bind the device.
-    if (user.status === 'active' && !user.deviceId) {
-        await updateDoc(userDocRef, { deviceId: currentDeviceId });
-        console.log(`Device bound for user ${uid}: ${currentDeviceId}`);
-        return { isVerified: true };
-    }
-
-    // If user is active and has a deviceId, check for a match.
-    if (user.deviceId === currentDeviceId) {
-        return { isVerified: true };
-    }
-
-    // Device mismatch.
-    console.warn(`Device mismatch for user ${uid}. Expected ${user.deviceId}, got ${currentDeviceId}`);
-    return { isVerified: false };
-}
-
-
-// Admin actions
-export async function getAllUsers(): Promise<UserRecord[]> {
-  if (!db) return [];
-  // In a real app, you would add authentication to ensure only an admin can call this.
-  const querySnapshot = await getDocs(usersCollection);
-  const users: UserRecord[] = [];
-  querySnapshot.forEach((doc) => {
-    users.push(doc.data() as UserRecord);
-  });
-  return users;
-}
-
-export async function activateUser(uid: string): Promise<{ success: boolean }> {
-  if (!db) return { success: false };
-  // In a real app, you would add authentication to ensure only an admin can call this.
-  const userDocRef = doc(db, "users", uid);
-  const userDoc = await getDoc(userDocRef);
-  if (userDoc.exists()) {
-    await updateDoc(userDocRef, { status: 'active' });
-    console.log(`Activated user: ${uid}`);
-    return { success: true };
-  }
-  return { success: false };
-}
-
-// --- Original Actions ---
+// --- Original AI Actions ---
 
 interface ActionResult {
   answer?: string;
@@ -139,7 +58,7 @@ function buildProfileString(userProfile: ProfileData | null): string {
       Income: ${userProfile.income}
       Occupation: ${userProfile.occupation}
       Country: ${userProfile.country}
-      State/Region: ${userProfile.state}
+      State/Region: ${user.state}
       Gender: ${userProfile.gender}
       Date of Birth: ${userProfile.dob}
       Age: ${age}
