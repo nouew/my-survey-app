@@ -6,10 +6,10 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase-admin';
 import { getAuth as getClientAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { app } from '@/lib/firebase-client';
+import { doc, getDoc } from 'firebase/firestore';
+import { app, db as clientDb } from '@/lib/firebase-client';
 
 const serverAuth = getAuth(adminApp);
-const db = getFirestore(adminApp);
 const clientAuth = getClientAuth(app);
 
 
@@ -38,6 +38,7 @@ export async function createUser(username: string, password: string): Promise<Au
     
     const uid = userRecord.uid;
 
+    const db = getFirestore(adminApp);
     const userDocRef = db.collection('users').doc(uid);
     await userDocRef.set({
       id: cleanUsername,
@@ -54,6 +55,7 @@ export async function createUser(username: string, password: string): Promise<Au
     if (error.code === 'auth/weak-password') {
       return safelyReturn({ status: 'error', message: 'Password should be at least 6 characters.' });
     }
+    console.error("Error creating user:", error);
     return safelyReturn({ status: 'error', message: error.message || 'An unexpected error occurred during signup.' });
   }
 }
@@ -64,21 +66,23 @@ export async function signInUser(username: string, password: string): Promise<Au
 
     try {
         const userCredential = await signInWithEmailAndPassword(clientAuth, email, password);
-        const uid = userCredential.user.uid;
+        const user = userCredential.user;
+        const uid = user.uid;
 
-        const userDocRef = db.collection('users').doc(uid);
-        const userDoc = await userDocRef.get();
+        const userDocRef = doc(clientDb, "users", uid);
+        const userDoc = await getDoc(userDocRef);
 
-        if (!userDoc.exists) {
-            return safelyReturn({ status: 'error', message: 'User data not found in database.' });
+        if (!userDoc.exists()) {
+             // This case should ideally not happen if createUser is working correctly.
+            return safelyReturn({ status: 'error', message: 'User data not found in database. Please contact support.' });
         }
 
         const userData = userDoc.data();
-
         if (userData?.status !== 'active') {
             return safelyReturn({ status: 'pending', message: 'Your account has not been activated by an administrator.' });
         }
         
+        // Use the Admin SDK on the server to create a custom token
         const customToken = await serverAuth.createCustomToken(uid);
 
         return safelyReturn({ status: 'success', message: customToken, uid: uid });
@@ -87,6 +91,7 @@ export async function signInUser(username: string, password: string): Promise<Au
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
             return safelyReturn({ status: 'error', message: 'Invalid username or password.' });
         }
+        console.error("Sign in error:", error);
         return safelyReturn({ status: 'error', message: error.message || 'An unexpected error occurred during login.' });
     }
 }
