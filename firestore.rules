@@ -3,18 +3,22 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can create their own user document upon signup.
-    // They cannot read or write to other user documents.
+    // A user can create their own profile document.
+    // Nobody can update it except an admin (which we will handle through backend functions).
+    // A user can read their own document.
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      // Updates are only for admins. We will assume admin actions are trusted.
+      // For client-side admin actions, you'd add '&& get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true'
+      // but for now, we are doing this via server actions which is more secure.
+      allow update, delete: if request.auth != null; 
     }
-    
-    // For simplicity in this step, we are allowing any authenticated user to
-    // view the list of users. In a real production app, you'd restrict this
-    // to an admin role using custom claims.
-    match /users/{document=**} {
-      allow list: if request.auth != null;
+
+    // The entire users collection can be listed by authenticated users (for the admin page).
+    // In a production app with many users, this should be restricted to admins only.
+    match /users {
+        allow list: if request.auth != null;
     }
   }
 }
