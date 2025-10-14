@@ -2,15 +2,18 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { getAuth, signOut } from "firebase/auth";
+import { app } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Flame, AlertTriangle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Flame, AlertTriangle, LogOut } from "lucide-react";
 import { translations, Language } from "@/lib/translations";
 
 export default function BlockedPage() {
     const [lang, setLang] = useState<Language>('ar');
     const searchParams = useSearchParams();
+    const router = useRouter();
     const reason = searchParams.get('reason');
 
     useEffect(() => {
@@ -24,6 +27,14 @@ export default function BlockedPage() {
     }, []);
 
     const t = translations[lang] || translations.ar;
+
+    const handleLogout = async () => {
+        if (app) {
+            const auth = getAuth(app);
+            await signOut(auth);
+            router.push('/login');
+        }
+    };
 
     const isDeviceMismatch = reason === 'device_mismatch';
     const title = isDeviceMismatch ? t.auth.blocked.deviceMismatchTitle : t.auth.blocked.title;
@@ -46,6 +57,12 @@ export default function BlockedPage() {
                         <Button size="lg">{t.auth.blocked.contactSupport}</Button>
                     </a>
                 </CardContent>
+                <CardFooter className="flex flex-col sm:flex-row gap-2 justify-center">
+                     <Button variant="ghost" onClick={handleLogout}>
+                        <LogOut className="me-2 h-4 w-4" />
+                        {t.auth.logout}
+                    </Button>
+                </CardFooter>
             </Card>
         </div>
     );
