@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase-client';
-import { collection, onSnapshot, doc, updateDoc, getDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,37 +11,35 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, ShieldCheck, ShieldOff, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { getCookie } from 'cookies-next';
+import { validateAdminSession } from '@/app/actions';
 
 interface User {
-  id: string; // This is the username
-  uid: string; // This is the doc ID
+  id: string;
+  uid: string;
   status: 'active' | 'inactive';
-  email: string;
 }
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    const checkAdmin = async () => {
-        const username = getCookie('username');
-        if (username?.toLowerCase() !== 'admin') {
-            router.push('/login');
-            return;
-        }
-        setIsAdmin(true);
+    const checkAdminStatus = async () => {
+      const isAdmin = await validateAdminSession();
+      if (!isAdmin) {
+        router.push('/login');
+      } else {
+        setIsAuthorized(true);
+      }
     };
-
-    checkAdmin();
+    checkAdminStatus();
   }, [router]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAuthorized) return;
 
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where("id", "!=", "admin")); // Exclude admin from the list
@@ -60,7 +58,7 @@ export default function AdminPage() {
     });
 
     return () => unsubscribe();
-  }, [isAdmin, toast]);
+  }, [isAuthorized, toast]);
 
   const toggleUserStatus = async (uid: string, currentStatus: 'active' | 'inactive') => {
     const userRef = doc(db, 'users', uid);
@@ -80,14 +78,18 @@ export default function AdminPage() {
     }
   };
   
-  if (!isAdmin) {
-       return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
+  if (isAuthorized === null || (isAuthorized && isLoading)) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
+  if (!isAuthorized) {
+    // This is a fallback, as the user should have been redirected.
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8">
@@ -103,11 +105,6 @@ export default function AdminPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -151,7 +148,6 @@ export default function AdminPage() {
                 )}
               </TableBody>
             </Table>
-          )}
         </CardContent>
       </Card>
     </div>
