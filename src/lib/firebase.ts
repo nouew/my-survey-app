@@ -14,25 +14,29 @@ const clientFirebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+let db: Firestore | undefined;
 
 // Initialize Firebase for the client-side
 // We check if getApps().length is 0 to prevent re-initializing the app.
-if (typeof window !== 'undefined' && !getApps().length) {
-    if (clientFirebaseConfig.apiKey) {
-        app = initializeApp(clientFirebaseConfig);
+if (typeof window !== 'undefined') {
+    if (clientFirebaseConfig.apiKey && !getApps().length) {
+        try {
+            app = initializeApp(clientFirebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Failed to initialize Firebase", e)
+        }
+    } else if (clientFirebaseConfig.apiKey) {
+        app = getApp();
         auth = getAuth(app);
         db = getFirestore(app);
     }
-} else if (typeof window !== 'undefined') {
-    app = getApp();
-    auth = getAuth(app);
-    db = getFirestore(app);
 }
+
 
 // We export the client-side instances.
 // In server-side files (like actions.ts), we will need to initialize a separate instance.
-// @ts-ignore - these can be undefined if config is not set, which is handled in components.
 export { app, auth, db };

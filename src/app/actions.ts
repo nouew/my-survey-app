@@ -21,12 +21,10 @@ let serverApp: FirebaseApp;
 let db: Firestore;
 
 // Initialize the server-side app if it hasn't been already
-if (!getApps().find(app => app.name === 'server')) {
-    if (serverConfig.apiKey) {
-        serverApp = initializeApp(serverConfig, 'server');
-        db = getFirestore(serverApp);
-    }
-} else {
+if (serverConfig.apiKey && !getApps().find(app => app.name === 'server')) {
+    serverApp = initializeApp(serverConfig, 'server');
+    db = getFirestore(serverApp);
+} else if (serverConfig.apiKey) {
     serverApp = getApp('server');
     db = getFirestore(serverApp);
 }
@@ -40,7 +38,7 @@ async function getDeviceIdFromHeaders(): Promise<string> {
 
 export async function createUserRecord(uid: string, email: string | null) {
   if (!db) {
-    console.error("Firestore not initialized for createUserRecord");
+    console.error("Firestore not initialized for createUserRecord. Check server environment variables.");
     return;
   }
   
