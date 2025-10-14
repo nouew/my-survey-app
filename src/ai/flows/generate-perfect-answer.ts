@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Generates the most accurate answer to a survey question based on the question and user profile.
+ * @fileOverview Generates the most accurate answer to a survey question based on the user profile.
  *
  * - generatePerfectAnswer - A function that handles the generation of the perfect answer.
  * - GeneratePerfectAnswerInput - The input type for the generatePerfectAnswer function.
@@ -10,87 +10,11 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {cosineSimilarity} from 'genkit';
 
 // Dummy in-memory storage. In a real app, you'd use a database like Firestore.
+// This is now only used to demonstrate saving, not for retrieval by the AI.
 const userAnswers: { [key: string]: { question: string, answer: string }[] } = {};
 
-// == Smart History Tool Definition ==
-
-// Input for the similarity check flow
-const FindSimilarQuestionInputSchema = z.object({
-  userId: z.string(),
-  newQuestion: z.string(),
-});
-
-// Defines a flow to find a semantically similar question.
-const findSimilarQuestionFlow = ai.defineFlow(
-  {
-    name: 'findSimilarQuestionFlow',
-    inputSchema: FindSimilarQuestionInputSchema,
-    outputSchema: z.object({
-      found: z.boolean(),
-      previousAnswer: z.string().optional(),
-    }),
-  },
-  async ({ userId, newQuestion }) => {
-    const history = userAnswers[userId];
-    if (!history || history.length === 0) {
-      return { found: false };
-    }
-
-    // Embed the new question and all historical questions.
-    const questionsToEmbed = [newQuestion, ...history.map(qa => qa.question)];
-    const embeddings = await ai.embed({
-      model: 'googleai/embedding-004',
-      content: questionsToEmbed,
-    });
-
-    const newQuestionEmbedding = embeddings[0];
-    const historyEmbeddings = embeddings.slice(1);
-
-    let bestMatch = { score: -1, index: -1 };
-
-    // Find the best match using cosine similarity.
-    for (let i = 0; i < historyEmbeddings.length; i++) {
-      const score = cosineSimilarity(newQuestionEmbedding, historyEmbeddings[i]);
-      if (score > bestMatch.score) {
-        bestMatch = { score, index: i };
-      }
-    }
-    
-    // Only consider it a match if the similarity is very high.
-    const SIMILARITY_THRESHOLD = 0.95; 
-    if (bestMatch.score > SIMILARITY_THRESHOLD) {
-      return {
-        found: true,
-        previousAnswer: history[bestMatch.index].answer,
-      };
-    }
-
-    return { found: false };
-  }
-);
-
-
-const answerHistoryTool = ai.defineTool(
-  {
-    name: 'answerHistoryTool',
-    description: 'Check if a semantically similar question has been answered before. Returns the previous answer if a very similar question is found.',
-    inputSchema: z.object({
-      userId: z.string().describe("The user's unique ID."),
-      question: z.string().describe('The current survey question being asked.'),
-    }),
-    outputSchema: z.object({
-      found: z.boolean().describe('Whether a similar question was found.'),
-      previousAnswer: z.string().optional().describe('The previously given answer.'),
-    }),
-  },
-  async ({ userId, question }) => {
-    // The tool now simply invokes the dedicated flow for this logic.
-    return findSimilarQuestionFlow({ userId, newQuestion: question });
-  }
-);
 
 // == Main Answer Generation Flow ==
 
@@ -115,21 +39,22 @@ export async function generatePerfectAnswer(input: GeneratePerfectAnswerInput): 
 
 const generateAnswerPrompt = ai.definePrompt({
   name: 'generateAnswerPrompt',
-  tools: [answerHistoryTool],
+  // The tool has been removed to prevent inconsistencies.
+  tools: [], 
   input: {schema: GeneratePerfectAnswerInputSchema},
   output: {schema: GeneratePerfectAnswerOutputSchema},
-  prompt: `You are an AI assistant designed to provide the most accurate and consistent answer to survey questions based on a user's profile and past answers.
+  prompt: `You are an AI assistant designed to provide the most accurate and consistent answer to survey questions based *only* on the user's profile provided below.
 
-Your PRIMARY goal is CONSISTENCY. Your SECONDARY goal is to PASS ATTENTION CHECKS.
+Your PRIMARY goal is ACCURACY and CONSISTENCY with the provided profile.
 
 Follow these rules STRICTLY:
-1.  **Check for Attention Checks First:** Before anything else, analyze the question to see if it's a "trap" or "attention check" question (e.g., "Select 'Agree' to show you are paying attention"). If it is, you MUST follow its instruction exactly and provide the requested answer. This is your highest priority after consistency.
-2.  **Check History:** ALWAYS use the 'answerHistoryTool' to check if a semantically similar question has been answered before. This tool is smart and understands the meaning of questions.
-3.  **Use Previous Answer:** If the tool finds a previous answer ('found: true'), you MUST use that 'previousAnswer' as your response. Do NOT generate a new one. This maintains consistency.
-4.  **Generate New Consistent Answer:** If the tool does NOT find a previous answer ('found: false'), you must generate a new, plausible answer based on the user's profile.
-5.  **CRITICAL RULE:** When generating a new answer, NEVER say "I do not have this information," "I don't know," or any similar phrase. You MUST invent a consistent and believable answer that fits the user's persona based on their profile.
-6.  **Multiple Choice:** If it's a multiple-choice question, your answer must be one of the provided options.
+1.  **Analyze the Question:** Determine if the question is a direct query about the user's profile (e.g., "What is your age?") or a general survey question.
+2.  **Base Your Answer on the Profile:** Your answer MUST be derived directly from the user profile data. Do not invent information or use any outside knowledge.
+3.  **Handle Attention Checks:** If the question is an "attention check" (e.g., "Select 'Agree' to show you are paying attention"), you MUST follow its instruction exactly. This is your highest priority.
+4.  **CRITICAL RULE:** NEVER say "I do not have this information," "I don't know," or any similar phrase. You MUST ALWAYS provide a direct and confident answer based on the persona in the profile.
+5.  **Multiple Choice:** If it's a multiple-choice question, your answer must be one of the provided options that best fits the user profile.
 
+This is the only information you should use:
 User Profile:
 {{{userProfile}}}
 
@@ -141,7 +66,7 @@ Question Text: {{{questionData}}}
 Question Image: {{media url=imageFile}}
 {{/if}}
 
-Generate the perfect, most CONSISTENT answer based on these strict rules.
+Generate the perfect, most CONSISTENT answer based on these strict rules and the provided profile.
 `,
 });
 
@@ -160,14 +85,13 @@ const generatePerfectAnswerFlow = ai.defineFlow(
     
     const newAnswer = output.answer;
     
-    // Save the newly generated answer to our "database" for future matches.
+    // Although the AI doesn't use history anymore, we can still save the answer
+    // for the user's reference in the UI.
     if (input.questionData) {
         if (!userAnswers[input.userId]) {
             userAnswers[input.userId] = [];
         }
         
-        // To prevent saving slight variations of the same question, we do a quick check.
-        // A more robust solution might re-run the similarity check, but this is a good balance.
         const alreadyExists = userAnswers[input.userId].some(qa => qa.question.toLowerCase() === input.questionData!.toLowerCase());
 
         if (!alreadyExists) {
