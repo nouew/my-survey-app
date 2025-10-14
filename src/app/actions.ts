@@ -21,6 +21,8 @@ export async function createUserRecord(uid: string, email: string | null) {
   const userDocRef = doc(db, "users", uid);
   const userDoc = await getDoc(userDocRef);
 
+  // Only create the document if it DOES NOT exist.
+  // This prevents overwriting data on subsequent logins.
   if (!userDoc.exists()) {
     const isAdmin = email === 'hakwa7952@gmail.com';
 

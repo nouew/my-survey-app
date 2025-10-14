@@ -55,6 +55,7 @@ export default function Home() {
             const data = userDoc.data() as UserData;
             setUserData(data);
 
+            // **CRITICAL FIX**: Use return to stop execution after redirection.
             if (data.isAdmin) {
                 router.push('/admin');
                 return; 
@@ -74,6 +75,9 @@ export default function Home() {
             setLoading(false);
 
           } else {
+             // If document doesn't exist yet, it might still be creating.
+             // A better approach would be to wait or handle this state.
+             // For now, redirecting to blocked is a safe default.
              router.push('/blocked');
              return;
           }
