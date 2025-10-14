@@ -57,10 +57,9 @@ export default function SignupPage() {
     setError(null);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // CRITICAL FIX: Ensure the user record is created in Firestore.
-      // This was the missing piece causing the admin/blocked page issue.
+      // **CRITICAL FIX**: Ensure the user record is created in Firestore after signup.
       await createUserRecord(userCredential.user.uid, userCredential.user.email);
-      // Let the onAuthStateChanged handle redirection to the blocked/admin page initially
+      // onAuthStateChanged will handle redirection.
     } catch (err: any) {
       const errorCode = err.code as keyof typeof t.auth.errors;
       setError(t.auth.errors[errorCode] || t.auth.errors.default);
@@ -77,8 +76,7 @@ export default function SignupPage() {
       // Create user record in our DB if it's a new user
       await createUserRecord(result.user.uid, result.user.email);
        // Let the onAuthStateChanged handle redirection
-    } catch (err: any) {
-      const errorCode = err.code as keyof typeof t.auth.errors;
+    } catch (err: any)      const errorCode = err.code as keyof typeof t.auth.errors;
       setError(t.auth.errors[errorCode] || t.auth.errors.default);
       setIsLoading(false);
     }

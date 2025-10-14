@@ -6,9 +6,6 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import type { ProfileData } from "@/lib/data";
 import { generatePerfectAnswer } from "@/ai/flows/generate-perfect-answer";
 
-// This file will now only contain server actions that DO NOT require Firebase Auth context,
-// like the Genkit AI calls. User management actions are moved to the client.
-
 async function getDeviceIdFromHeaders(): Promise<string> {
     const { headers } = await import('next/headers');
     const userAgent = headers().get('user-agent') || 'unknown';
@@ -24,10 +21,7 @@ export async function createUserRecord(uid: string, email: string | null) {
   const userDocRef = doc(db, "users", uid);
   const userDoc = await getDoc(userDocRef);
 
-  // CRITICAL FIX: Only create the user document if it does not already exist.
-  // This prevents overwriting the user's status and deviceId on every login.
   if (!userDoc.exists()) {
-    // This is the hardcoded admin email. Only this user will be an admin.
     const isAdmin = email === 'hakwa7952@gmail.com';
 
     const userData: {
@@ -39,7 +33,6 @@ export async function createUserRecord(uid: string, email: string | null) {
     } = {
       uid,
       email,
-      // The admin is active by default. All other users are inactive until an admin activates them.
       status: isAdmin ? 'active' : 'inactive',
       deviceId: null, 
     };
@@ -48,7 +41,6 @@ export async function createUserRecord(uid: string, email: string | null) {
       userData.isAdmin = true;
     }
     
-    // Using setDoc to create a new document.
     await setDoc(userDocRef, userData);
     console.log(`Created Firestore record for new user: ${uid}. Admin status: ${isAdmin}`);
   } else {

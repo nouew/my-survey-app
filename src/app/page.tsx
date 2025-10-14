@@ -55,32 +55,25 @@ export default function Home() {
             const data = userDoc.data() as UserData;
             setUserData(data);
 
-            // **FIXED REDIRECT LOGIC**
-            // 1. If user is admin, redirect to admin page and STOP further execution.
             if (data.isAdmin) {
                 router.push('/admin');
-                return; // This return is critical.
+                return; 
             }
 
-            // 2. If user is inactive, block them.
             if (data.status === 'inactive') {
               router.push('/blocked');
               return;
             }
             
-            // 3. If user is active but device doesn't match, block them.
-            // This check now only runs for non-admin users.
             const currentDeviceId = await getDeviceId();
             if (data.status === 'active' && data.deviceId && data.deviceId !== currentDeviceId) {
               router.push('/blocked?reason=device_mismatch');
               return;
             }
             
-            // 4. If all checks pass, stop loading and show the main page.
             setLoading(false);
 
           } else {
-             // If user exists in Auth but not in Firestore, they are blocked.
              router.push('/blocked');
              return;
           }
@@ -91,7 +84,6 @@ export default function Home() {
         }
 
       } else {
-        // No user is logged in, redirect to login page.
         router.push('/login');
       }
     });

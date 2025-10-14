@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { translations, Language } from "@/lib/translations";
-import { Flame, ShieldCheck, UserCog, AlertTriangle } from "lucide-react";
+import { Flame, ShieldCheck, UserCog, AlertTriangle, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
@@ -51,26 +51,23 @@ export default function AdminPage() {
     }
 
     try {
-        // Step 1: Verify if the current user is an admin by checking their document.
         const adminDocRef = doc(db, "users", adminUser.uid);
         const adminDoc = await getDoc(adminDocRef);
 
         if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
             setIsAdmin(true);
 
-            // Step 2: If they are an admin, fetch all users.
             const usersCollection = collection(db, "users");
             const querySnapshot = await getDocs(usersCollection);
             const userList: UserRecord[] = [];
             querySnapshot.forEach((doc) => {
-                // Ensure we don't list the admin themselves if they don't have an email (edge case)
                 if(doc.data().email) {
                   userList.push(doc.data() as UserRecord);
                 }
             });
-            // Filter out the current admin from the list to not show them
             setUsers(userList.filter(u => u.uid !== adminUser.uid));
         } else {
+            setIsAdmin(false);
             setError(translations[lang].auth.admin.notAdmin);
         }
     } catch (error: any) {
@@ -96,7 +93,6 @@ export default function AdminPage() {
             if (user) {
                 fetchUsers(user);
             } else {
-                // Not logged in, redirect or show error
                 setError("You must be logged in to view this page.");
                 setIsLoading(false);
             }
@@ -115,25 +111,34 @@ export default function AdminPage() {
         const currentDeviceId = await getDeviceId();
         await updateDoc(userDocRef, { 
             status: 'active',
-            deviceId: currentDeviceId // Bind device on first activation
+            deviceId: currentDeviceId 
         });
         toast({
             title: "User Activated",
-            description: `User ${uid} has been successfully activated.`,
+            description: `User has been successfully activated.`,
         });
         const auth = getAuth(app);
-        if(auth.currentUser) fetchUsers(auth.currentUser); // Refresh the list
+        if(auth.currentUser) fetchUsers(auth.currentUser); 
     } catch (error: any) {
         console.error("Error activating user:", error);
         toast({
             variant: "destructive",
             title: "Activation Failed",
-            description: `Could not activate user ${uid}. Check permissions.`,
+            description: `Could not activate user. Check permissions.`,
         });
     }
   };
+
+  if (isLoading) {
+    return (
+         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Verifying permissions...</p>
+         </div>
+    )
+  }
   
-  if (!isAdmin && !isLoading) {
+  if (!isAdmin) {
     return (
         <div className="flex flex-col items-center min-h-screen bg-background p-4 sm:p-6 md:p-8">
              <header className="w-full max-w-7xl flex justify-between items-center mb-8">
@@ -194,17 +199,7 @@ export default function AdminPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {isLoading ? (
-                                <TableRow>
-                                    <TableCell colSpan={4}>
-                                        <div className="space-y-2">
-                                            <Skeleton className="h-8 w-full" />
-                                            <Skeleton className="h-8 w-full" />
-                                            <Skeleton className="h-8 w-full" />
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ) : users.length === 0 ? (
+                            {users.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={4} className="text-center h-24">{t.auth.admin.noUsers}</TableCell>
                                 </TableRow>
