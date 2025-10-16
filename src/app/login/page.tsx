@@ -73,7 +73,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-       <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6">
             <Flame className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-bold text-foreground font-headline">
               Global Survey Assistant
@@ -124,7 +124,13 @@ export default function LoginPage() {
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
-            <a href="mailto:support@example.com" className="text-sm text-muted-foreground hover:text-primary underline">
+            {/* تم تعديل رابط الدعم هنا ليستخدم بروتوكول التليجرام */}
+            <a 
+              href="tg://resolve?domain=ajhsmak" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-muted-foreground hover:text-primary underline"
+            >
               Contact Support
             </a>
           </CardFooter>
