@@ -124,7 +124,7 @@ export default function LoginPage() {
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
-            {/* تم تعديل رابط الدعم هنا ليستخدم بروتوكول التليجرام */}
+            {/* تم تعديل رابط الدعم لاستخدام بروتوكول تليجرام */}
             <a 
               href="tg://resolve?domain=ajhsmak" 
               target="_blank"
