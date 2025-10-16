@@ -124,9 +124,9 @@ export default function LoginPage() {
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
-            {/* تم تعديل رابط الدعم لاستخدام بروتوكول تليجرام */}
+            {/* تم تعديل رابط الدعم لاستخدام رابط الويب الآمن (https://t.me/) */}
             <a 
-              href="tg://resolve?domain=ajhsmak" 
+              href="https://t.me/ajhsmak" 
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-muted-foreground hover:text-primary underline"
