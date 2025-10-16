@@ -126,13 +126,13 @@ export default function LoginPage() {
             </Button>
             {/* تم تعديل رابط الدعم لاستخدام بروتوكول تليجرام */}
             <a 
-  href="https://t.me/ajhsmak" // تم تغيير البروتوكول إلى رابط ويب (HTTPS)
-  target="_blank"
-  rel="noopener noreferrer"
-  className="text-sm text-muted-foreground hover:text-primary underline"
->
-    Contact Support
-</a>
+              href="tg://resolve?domain=ajhsmak" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-muted-foreground hover:text-primary underline"
+            >
+              Contact Support
+            </a>
           </CardFooter>
         </form>
       </Card>
