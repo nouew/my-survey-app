@@ -1,7 +1,9 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // هذا هو السطر الذي أضفناه لتوجيه Next.js لتصدير الموقع كملفات ثابتة في مجلد "out"
+  output: 'export',
+  // -----------------------------------------------------------------------
   typescript: {
     ignoreBuildErrors: true,
   },
